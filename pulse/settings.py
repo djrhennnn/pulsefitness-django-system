@@ -9,7 +9,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     'pulsesystems.tech',
     'www.pulsesystems.tech',
-    '1wc4tfp4.up.railway.app',
+    'pulsefitness-django-system.up.railway.app',
 ]
 
 INSTALLED_APPS = [
