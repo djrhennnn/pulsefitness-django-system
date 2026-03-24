@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat – PulseFitness</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body{background:#050505;color:#fff;font-family:'Inter',sans-serif;height:100vh;display:flex;flex-direction:column}
+        .glass-card{background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.01));backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.1)}
+        .msg-me{background:linear-gradient(135deg,rgba(0,243,255,.2),rgba(0,243,255,.1));border:1px solid rgba(0,243,255,.3);border-radius:18px 18px 4px 18px;align-self:flex-end}
+        .msg-them{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:18px 18px 18px 4px;align-self:flex-start}
+        #chatBox{overflow-y:auto;flex:1;padding:1.5rem;display:flex;flex-direction:column;gap:12px}
+        #chatBox::-webkit-scrollbar{width:4px}
+        #chatBox::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+        .chat-input{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;resize:none;outline:none;transition:border-color .2s}
+        .chat-input:focus{border-color:#00f3ff}
+    </style>
+</head>
+<body>
+<!-- Header -->
+<header class="flex items-center gap-4 px-5 py-3 border-b border-white/10 flex-shrink-0" style="background:rgba(8,8,8,.97)">
+    <a href="{% if trainer %}{% url 'trainer_dashboard' %}{% else %}{% url 'member_dashboard' %}{% endif %}"
+       class="text-gray-400 hover:text-white transition-colors">
+        <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <!-- Trainer avatar -->
+    <div class="relative">
+        {% if booking.trainer.photo %}
+        <img src="{{ booking.trainer.photo.url }}" class="w-10 h-10 rounded-full object-cover object-top" alt="{{ booking.trainer.name }}">
+        {% elif booking.trainer.static_photo_key %}
+        <img src="{% static booking.trainer.static_photo_key %}" class="w-10 h-10 rounded-full object-cover object-top" alt="{{ booking.trainer.name }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-black text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff);display:none">{{ booking.trainer.name|first|upper }}</div>
+        {% else %}
+        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-black text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">{{ booking.trainer.name|first|upper }}</div>
+        {% endif %}
+        <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black" style="background:#22c55e"></span>
+    </div>
+    <div class="flex-1 min-w-0">
+        <div class="font-bold text-sm truncate">{{ booking.trainer.name }}</div>
+        <div class="text-xs text-gray-500">{{ booking.trainer.get_specialty_display }}
+            <span class="ml-2 {% if booking.status == 'confirmed' %}text-green-400{% elif booking.status == 'cancelled' %}text-red-400{% else %}text-yellow-400{% endif %}">
+                · {{ booking.status|upper }}
+            </span>
+        </div>
+    </div>
+    <a href="{% url 'home' %}" class="font-display text-sm font-bold tracking-tighter hidden sm:block" style="color:#00f3ff">PULSE<span class="text-white">FITNESS</span></a>
+</header>
+
+<!-- Chat messages -->
+<div id="chatBox">
+    {% for m in messages %}
+    <div class="max-w-xs md:max-w-md lg:max-w-lg px-4 py-2.5 {% if m.sender == request.user %}msg-me{% else %}msg-them{% endif %}">
+        {% if m.sender != request.user %}
+        <div class="text-xs font-bold mb-1" style="color:#00f3ff">{{ m.sender.get_full_name|default:m.sender.username }}</div>
+        {% endif %}
+        <p class="text-sm leading-relaxed">{{ m.body }}</p>
+        <div class="text-xs text-gray-500 mt-1 {% if m.sender == request.user %}text-right{% endif %}">{{ m.sent_at|date:"M d, H:i" }}</div>
+    </div>
+    {% empty %}
+    <div class="text-center text-gray-500 mt-16">
+        <i class="fa-solid fa-comments text-5xl mb-4 block opacity-30"></i>
+        <p class="text-sm">No messages yet. Say hello!</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Input bar -->
+<div class="flex-shrink-0 border-t border-white/10 p-4" style="background:rgba(8,8,8,.97)">
+    <div class="flex gap-3 items-end max-w-4xl mx-auto">
+        <textarea id="msgInput" class="chat-input flex-1 px-4 py-3 rounded-2xl text-sm" rows="1"
+            placeholder="Type a message…"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+        <button onclick="sendMsg()" class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-110" style="background:#00f3ff;color:#000">
+            <i class="fa-solid fa-paper-plane text-sm"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+const BOOKING_ID  = {{ booking.id }};
+const CSRF        = '{{ csrf_token }}';
+const SEND_URL    = '{% url "send_message" booking.id %}';
+const POLL_URL    = '{% url "poll_messages" booking.id %}';
+const chatBox     = document.getElementById('chatBox');
+let lastId = {% if messages %}{{ messages.last.pk|default:0 }}{% else %}0{% endif %};
+
+// Scroll to bottom on load
+chatBox.scrollTop = chatBox.scrollHeight;
+
+function appendMsg(m) {
+    // Remove empty-state if present
+    const empty = chatBox.querySelector('.text-center');
+    if (empty) empty.remove();
+
+    const div = document.createElement('div');
+    div.className = `max-w-xs md:max-w-md lg:max-w-lg px-4 py-2.5 ${m.is_me ? 'msg-me' : 'msg-them'}`;
+    div.innerHTML = `
+        ${!m.is_me ? `<div class="text-xs font-bold mb-1" style="color:#00f3ff">${m.sender}</div>` : ''}
+        <p class="text-sm leading-relaxed">${escHtml(m.body)}</p>
+        <div class="text-xs text-gray-500 mt-1 ${m.is_me ? 'text-right' : ''}">${m.sent_at}</div>`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    if (m.id > lastId) lastId = m.id;
+}
+
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function sendMsg() {
+    const input = document.getElementById('msgInput');
+    const body  = input.value.trim();
+    if (!body) return;
+    input.value = '';
+    input.style.height = 'auto';
+
+    const fd = new FormData();
+    fd.append('body', body);
+    fd.append('csrfmiddlewaretoken', CSRF);
+
+    fetch(SEND_URL, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => { if (d.success) appendMsg(d); });
+}
+
+// Auto-resize textarea
+document.getElementById('msgInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// Poll for new messages every 3 seconds
+function pollMsgs() {
+    fetch(`${POLL_URL}?after=${lastId}`)
+        .then(r => r.json())
+        .then(d => { if (d.messages) d.messages.forEach(appendMsg); });
+}
+setInterval(pollMsgs, 3000);
+</script>
+</body>
+</html>

@@ -1,0 +1,289 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}PulseFitness Admin{% endblock %}
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        ⚡ PULSE<span style="color:#00f3ff">FITNESS</span> Admin
+    </a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+/* ── Base ── */
+:root {
+    --primary: #00f3ff;
+    --secondary: #b026ff;
+    --dark: #050505;
+    --dark2: #0d0d0d;
+    --dark3: #141414;
+    --border: rgba(255,255,255,.1);
+    --text: #e5e7eb;
+    --text-muted: #6b7280;
+}
+
+body, #container {
+    background: var(--dark) !important;
+    color: var(--text) !important;
+    font-family: 'Inter', -apple-system, sans-serif !important;
+}
+
+/* ── Header ── */
+#header {
+    background: var(--dark2) !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 12px 20px !important;
+    display: flex;
+    align-items: center;
+}
+
+#site-name a {
+    font-weight: 800 !important;
+    font-size: 1.25rem !important;
+    letter-spacing: -0.02em;
+    color: #fff !important;
+    text-decoration: none !important;
+}
+
+#user-tools {
+    color: var(--text-muted) !important;
+    font-size: 0.8rem !important;
+}
+#user-tools a { color: var(--primary) !important; }
+
+/* ── Nav ── */
+div.module, #nav-sidebar .module {
+    background: var(--dark2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+    margin-bottom: 12px !important;
+}
+
+.module caption, .module h2 {
+    background: rgba(0,243,255,.08) !important;
+    color: var(--primary) !important;
+    border-bottom: 1px solid var(--border) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    letter-spacing: .1em !important;
+    text-transform: uppercase !important;
+    padding: 10px 16px !important;
+}
+
+/* ── Content ── */
+#content, #content-main {
+    background: transparent !important;
+    color: var(--text) !important;
+}
+
+#content h1 {
+    color: #fff !important;
+    font-size: 1.5rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 1.5rem !important;
+}
+
+/* ── Breadcrumbs ── */
+div.breadcrumbs {
+    background: var(--dark2) !important;
+    border-bottom: 1px solid var(--border) !important;
+    color: var(--text-muted) !important;
+    font-size: 0.8rem !important;
+    padding: 10px 20px !important;
+}
+div.breadcrumbs a { color: var(--primary) !important; }
+
+/* ── Changelist table ── */
+#result_list {
+    background: var(--dark2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    width: 100%;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+#result_list thead th {
+    background: rgba(0,243,255,.06) !important;
+    color: var(--text-muted) !important;
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .08em !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 12px 16px !important;
+}
+
+#result_list thead th a, #result_list thead th a:visited {
+    color: var(--text-muted) !important;
+}
+#result_list thead th a:hover { color: var(--primary) !important; }
+
+#result_list tbody tr {
+    border-bottom: 1px solid var(--border) !important;
+    transition: background .15s !important;
+}
+#result_list tbody tr:hover { background: rgba(255,255,255,.03) !important; }
+#result_list tbody td {
+    color: var(--text) !important;
+    padding: 12px 16px !important;
+    font-size: 0.875rem !important;
+    border: none !important;
+}
+
+/* ── Forms ── */
+.form-row, fieldset {
+    border: none !important;
+    background: transparent !important;
+}
+
+fieldset.module {
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    background: var(--dark2) !important;
+    padding: 20px !important;
+    margin-bottom: 20px !important;
+}
+
+input[type=text], input[type=email], input[type=password], input[type=number],
+input[type=url], input[type=tel], textarea, select, .vTextField {
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid var(--border) !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    font-size: 0.875rem !important;
+    transition: border-color .2s !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+input:focus, textarea:focus, select:focus {
+    border-color: var(--primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(0,243,255,.1) !important;
+}
+
+label { color: var(--text-muted) !important; font-size: 0.8rem !important; font-weight: 600 !important; }
+
+/* ── Buttons ── */
+.submit-row {
+    background: var(--dark2) !important;
+    border-top: 1px solid var(--border) !important;
+    padding: 16px 20px !important;
+    border-radius: 0 0 12px 12px !important;
+    display: flex; gap: 10px; flex-wrap: wrap;
+}
+
+input[type=submit], .button, a.button {
+    background: var(--primary) !important;
+    color: #000 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 9px 20px !important;
+    font-weight: 700 !important;
+    font-size: 0.8rem !important;
+    cursor: pointer !important;
+    transition: opacity .2s !important;
+    text-decoration: none !important;
+}
+input[type=submit]:hover, .button:hover { opacity: .85 !important; }
+
+.deletelink, a.deletelink {
+    background: rgba(239,68,68,.15) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(239,68,68,.3) !important;
+}
+
+/* ── Messages / alerts ── */
+.messagelist li {
+    border-radius: 8px !important;
+    margin-bottom: 8px !important;
+    font-size: 0.875rem !important;
+    padding: 12px 16px !important;
+}
+.messagelist li.success { background: rgba(34,197,94,.15) !important; color: #86efac !important; border: 1px solid rgba(34,197,94,.3) !important; }
+.messagelist li.error   { background: rgba(239,68,68,.15) !important; color: #fca5a5 !important; border: 1px solid rgba(239,68,68,.3) !important; }
+.messagelist li.warning { background: rgba(251,191,36,.15) !important; color: #fbbf24 !important; border: 1px solid rgba(251,191,36,.3) !important; }
+
+/* ── Sidebar ── */
+#nav-sidebar { background: var(--dark2) !important; border-right: 1px solid var(--border) !important; }
+#nav-sidebar a { color: var(--text) !important; }
+#nav-sidebar a:hover, #nav-sidebar .current-app a { color: var(--primary) !important; }
+.toggle-nav-sidebar { color: var(--text-muted) !important; }
+
+/* ── Links ── */
+a { color: var(--primary) !important; }
+a:hover { opacity: .8 !important; }
+
+/* ── Pagination ── */
+.paginator { color: var(--text-muted) !important; font-size: 0.8rem !important; }
+.paginator a { color: var(--primary) !important; }
+
+/* ── Boolean icons ── */
+img.list-icon { filter: none !important; }
+
+/* ── Dashboard app list ── */
+.app-fitness a, .model-trainer a, .model-userprofile a, .model-bookingrequest a {
+    color: var(--text) !important;
+}
+.app-fitness .addlink::after  { color: var(--primary) !important; }
+
+/* ── Filter sidebar ── */
+#changelist-filter {
+    background: var(--dark2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+}
+#changelist-filter h2, #changelist-filter h3 {
+    color: var(--primary) !important;
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .08em !important;
+}
+#changelist-filter a { color: var(--text) !important; }
+#changelist-filter a.selected, #changelist-filter li.selected a { color: var(--primary) !important; font-weight: 700 !important; }
+
+/* ── Search ── */
+#changelist-search input { max-width: 300px !important; }
+#changelist-search input[type=submit] { width: auto !important; }
+
+/* ── Inline ── */
+.inline-group {
+    background: var(--dark3) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    margin-top: 16px !important;
+}
+.inline-group h2 {
+    background: rgba(0,243,255,.06) !important;
+    color: var(--primary) !important;
+    padding: 10px 16px !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .08em !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+/* ── Calendar / DatePicker ── */
+.calendarbox, .clockbox { background: var(--dark2) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; }
+.calendar caption { color: var(--text) !important; }
+.calendar td a { color: var(--text) !important; }
+.calendar td a:hover, .calendar td.selected a { background: var(--primary) !important; color: #000 !important; border-radius: 4px !important; }
+
+/* ── Help text ── */
+.help { color: var(--text-muted) !important; font-size: 0.75rem !important; }
+
+/* ── Checkbox ── */
+input[type=checkbox] { accent-color: var(--primary) !important; }
+
+select option { background: #1a1a1a !important; color: #fff !important; }
+</style>
+{% endblock %}
