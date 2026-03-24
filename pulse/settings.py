@@ -6,7 +6,11 @@ SECRET_KEY = 'django-insecure-!m9=q8np472ht$jz2y2y$+4@i80*z_+1-1g6mi%v+5)t-_&%aa
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    'pulsesystems.tech',
+    'www.pulsesystems.tech',
+    '1wc4tfp4.up.railway.app',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
