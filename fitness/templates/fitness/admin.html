@@ -1,0 +1,444 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseFitness | Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body{background:#050505;color:#fff;font-family:'Inter',sans-serif}
+        .glass-card{background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.01));backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 32px rgba(0,0,0,.37)}
+        .text-gradient{background:linear-gradient(to right,#00f3ff,#b026ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .form-input{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff}
+        .form-input:focus{border-color:#00f3ff;outline:none;box-shadow:0 0 10px rgba(0,243,255,.2)}
+        ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0a0a}
+        ::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+        .sidebar-link{transition:all .2s;position:relative;overflow:hidden}
+        .sidebar-link::before{content:'';position:absolute;left:0;top:0;height:100%;width:3px;background:#00f3ff;transform:scaleY(0);transition:transform .2s}
+        .sidebar-link.active::before,.sidebar-link:hover::before{transform:scaleY(1)}
+        .sidebar-link.active{color:#00f3ff;background:rgba(0,243,255,.06)}
+        .stat-card{transition:transform .3s,box-shadow .3s}
+        .stat-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,243,255,.12)}
+        .status-badge-pending{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
+        .status-badge-confirmed{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+        .status-badge-cancelled{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+        .status-badge-expired{background:rgba(107,114,128,.15);color:#9ca3af;border:1px solid rgba(107,114,128,.3)}
+        @keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+    </style>
+</head>
+<body>
+
+{% if not user.is_authenticated or not user.is_staff %}
+<div class="min-h-screen flex items-center justify-center">
+    <div class="text-center">
+        <i class="fa-solid fa-shield-halved text-5xl text-red-400 mb-4 block"></i>
+        <p class="text-red-400 text-xl mb-6">Admin access required.</p>
+        <a href="{% url 'home' %}" class="px-6 py-3 rounded-lg font-bold" style="background:#00f3ff;color:#000">Go Home</a>
+    </div>
+</div>
+{% else %}
+
+<!-- Top bar -->
+<header class="fixed top-0 left-0 right-0 z-40 h-16 border-b border-white/10 flex items-center justify-between px-5" style="background:rgba(8,8,8,.97);backdrop-filter:blur(12px)">
+    <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-white p-1">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <a href="{% url 'home' %}" class="font-display text-lg font-bold flex items-center gap-2 tracking-tighter">
+            <i class="fa-solid fa-bolt" style="color:#00f3ff"></i>PULSE<span style="color:#00f3ff">FITNESS</span>
+            <span class="text-xs font-sans text-gray-600 ml-1 hidden sm:inline">/ ADMIN</span>
+        </a>
+    </div>
+    <div class="flex items-center gap-3">
+
+        <span class="text-gray-500 text-xs hidden md:block">{{ user.get_full_name|default:user.username }}</span>
+        <a href="{% url 'logout' %}" class="px-3 py-1.5 text-xs rounded-lg font-bold" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)">
+            <i class="fa-solid fa-right-from-bracket mr-1"></i>Logout
+        </a>
+    </div>
+</header>
+
+<div class="flex pt-16 min-h-screen">
+
+    <!-- Sidebar -->
+    <aside id="adminSidebar" class="fixed top-16 left-0 bottom-0 w-56 border-r border-white/10 p-4 z-30 hidden lg:flex flex-col" style="background:rgba(10,10,10,.95)">
+        <nav class="space-y-1 flex-1">
+            <button onclick="showSection('overview')" id="snav-overview" class="sidebar-link active w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-sm font-medium text-gray-300">
+                <i class="fa-solid fa-chart-pie w-4"></i>Overview
+            </button>
+            <button onclick="showSection('members')" id="snav-members" class="sidebar-link w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <i class="fa-solid fa-users w-4"></i>Members
+                <span class="ml-auto text-xs text-gray-500">{{ total_members }}</span>
+            </button>
+            <button onclick="showSection('trainers')" id="snav-trainers" class="sidebar-link w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <i class="fa-solid fa-dumbbell w-4"></i>Trainers
+                <span class="ml-auto text-xs text-gray-500">{{ total_trainers }}</span>
+            </button>
+            <button onclick="showSection('bookings')" id="snav-bookings" class="sidebar-link w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <i class="fa-solid fa-calendar-check w-4"></i>Bookings
+                {% if pending_count > 0 %}<span class="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold" style="background:#fbbf24;color:#000">{{ pending_count }}</span>{% endif %}
+            </button>
+            <button onclick="showSection('messages')" id="snav-messages" class="sidebar-link w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <i class="fa-solid fa-comments w-4"></i>Messages
+                <span class="ml-auto text-xs text-gray-500">{{ conversations.count }}</span>
+            </button>
+        </nav>
+        <div class="pt-4 border-t border-white/10">
+            <a href="/django-admin/" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-xs text-gray-500 transition-colors">
+                <i class="fa-solid fa-screwdriver-wrench w-4"></i>Django Admin
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main id="adminMain" class="flex-1 lg:ml-56 p-5 md:p-8 transition-all">
+
+        <!-- ── OVERVIEW ── -->
+        <div id="section-overview" class="admin-section">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="font-display text-2xl font-bold">Admin <span class="text-gradient">Overview</span></h1>
+                    <p class="text-gray-500 text-sm mt-0.5">PulseFitness management dashboard</p>
+                </div>
+            </div>
+
+            <!-- Stat cards -->
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                <div class="glass-card stat-card p-5 rounded-2xl cursor-pointer" onclick="showSection('members')">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-gray-400 text-xs uppercase tracking-wider">Members</span>
+                        <i class="fa-solid fa-users text-sm" style="color:#00f3ff"></i>
+                    </div>
+                    <div class="text-3xl font-bold" style="color:#00f3ff">{{ total_members }}</div>
+                    <div class="text-xs text-gray-500 mt-1">Registered users</div>
+                </div>
+                <div class="glass-card stat-card p-5 rounded-2xl cursor-pointer" onclick="showSection('trainers')">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-gray-400 text-xs uppercase tracking-wider">Trainers</span>
+                        <i class="fa-solid fa-dumbbell text-sm" style="color:#b026ff"></i>
+                    </div>
+                    <div class="text-3xl font-bold" style="color:#b026ff">{{ total_trainers }}</div>
+                    <div class="text-xs text-gray-500 mt-1">Active coaches</div>
+                </div>
+                <div class="glass-card stat-card p-5 rounded-2xl cursor-pointer" onclick="showSection('bookings')">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-gray-400 text-xs uppercase tracking-wider">Total Bookings</span>
+                        <i class="fa-solid fa-calendar text-sm text-orange-400"></i>
+                    </div>
+                    <div class="text-3xl font-bold text-orange-400">{{ total_bookings }}</div>
+                    <div class="text-xs text-gray-500 mt-1">All time</div>
+                </div>
+                <div class="glass-card stat-card p-5 rounded-2xl cursor-pointer" onclick="showSection('bookings')">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-gray-400 text-xs uppercase tracking-wider">Pending</span>
+                        <i class="fa-solid fa-clock text-sm text-yellow-400"></i>
+                    </div>
+                    <div class="text-3xl font-bold text-yellow-400">{{ pending_count }}</div>
+                    <div class="text-xs text-gray-500 mt-1">Awaiting action</div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Chart — fixed: uses separate context vars not Django template math -->
+                <div class="glass-card p-6 rounded-2xl">
+                    <h3 class="font-display text-base font-bold mb-4">Booking Status</h3>
+                    <canvas id="bookingChart" height="220"></canvas>
+                </div>
+
+                <!-- Recent bookings -->
+                <div class="glass-card p-6 rounded-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-display text-base font-bold">Recent Bookings</h3>
+                        <button onclick="showSection('bookings')" class="text-xs font-bold transition-colors" style="color:#00f3ff">View all →</button>
+                    </div>
+                    {% if bookings %}
+                    <div class="space-y-3">
+                        {% for b in bookings|slice:":6" %}
+                        <div class="flex justify-between items-center gap-3 p-2.5 rounded-lg" style="background:rgba(255,255,255,.03)">
+                            <div class="min-w-0">
+                                <div class="text-sm font-medium truncate">{{ b.member.get_full_name|default:b.member.username }}</div>
+                                <div class="text-xs text-gray-500 truncate">→ {{ b.trainer.name }}</div>
+                            </div>
+                            <span class="status-badge-{{ b.status }} text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0">{{ b.status|upper }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8 text-gray-500 text-sm">No bookings yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ── MEMBERS ── -->
+        <div id="section-members" class="admin-section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="font-display text-2xl font-bold">Members</h1>
+                <span class="text-gray-400 text-sm">{{ total_members }} registered</span>
+            </div>
+            <div class="mb-4">
+                <input type="text" id="adminMemberSearch" oninput="filterAdminMembers(this.value)" class="form-input px-4 py-2 rounded-lg text-sm w-full md:w-72" placeholder="Search members…">
+            </div>
+            <div class="glass-card rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-white/10 text-left">
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider font-medium">Name</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider font-medium">Email</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider font-medium">Age</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider font-medium">Gender</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider font-medium">Height</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider font-medium">Weight</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider font-medium">BMI</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5" id="adminMemberTable">
+                            {% for m in members %}
+                            <tr class="hover:bg-white/5 transition-colors admin-member-row">
+                                <td class="px-4 py-3 font-medium">{{ m.get_full_name|default:m.username }}</td>
+                                <td class="px-4 py-3 text-gray-400 text-xs">{{ m.email }}</td>
+                                <td class="px-4 py-3 text-gray-400">
+                                    {% if m.profile.age %}{{ m.profile.age }}{% else %}—{% endif %}
+                                </td>
+                                <td class="px-4 py-3 text-gray-400 capitalize">
+                                    {{ m.profile.gender|default:"—" }}
+                                </td>
+                                <td class="px-4 py-3 text-gray-400">
+                                    {% if m.profile.height_cm %}{{ m.profile.height_cm }} cm{% else %}—{% endif %}
+                                </td>
+                                <td class="px-4 py-3 text-gray-400">
+                                    {% if m.profile.weight_kg %}{{ m.profile.weight_kg }} kg{% else %}—{% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if m.profile.bmi %}
+                                    <span class="px-2 py-0.5 rounded text-xs font-bold" style="background:rgba(0,243,255,.15);color:#00f3ff">{{ m.profile.bmi }}</span>
+                                    {% else %}—{% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="px-4 py-12 text-center text-gray-500">No members registered yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── TRAINERS ── -->
+        <div id="section-trainers" class="admin-section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="font-display text-2xl font-bold">Trainers</h1>
+                <a href="/django-admin/fitness/trainer/add/" class="px-4 py-2 rounded-lg font-bold text-xs transition-all hover:bg-white" style="background:#00f3ff;color:#000">
+                    <i class="fa-solid fa-plus mr-1"></i>Add Trainer
+                </a>
+            </div>
+            <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {% for t in trainers %}
+                <div class="glass-card p-5 rounded-2xl">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h3 class="font-bold">{{ t.name }}</h3>
+                            <span class="text-xs" style="color:#00f3ff">{{ t.get_specialty_display }}</span>
+                        </div>
+                        {% if t.is_available %}
+                        <span class="status-badge-confirmed text-xs px-2 py-0.5 rounded-full font-bold">Available</span>
+                        {% else %}
+                        <span class="status-badge-cancelled text-xs px-2 py-0.5 rounded-full font-bold">Booked Out</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-gray-400 text-xs mb-4 leading-relaxed">{{ t.bio|default:"No bio provided." }}</p>
+                    <div class="flex justify-between items-center pt-3 border-t border-white/10">
+                        <span class="text-xs text-gray-500">{{ t.bookings.count }} booking{{ t.bookings.count|pluralize }}</span>
+                        <a href="/django-admin/fitness/trainer/{{ t.id }}/change/" class="text-xs font-bold transition-colors" style="color:#00f3ff">Edit →</a>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-3 text-center py-16 text-gray-500">
+                    <i class="fa-solid fa-dumbbell text-5xl mb-4 block"></i>
+                    <p class="mb-4">No trainers in the system yet.</p>
+                    <a href="/django-admin/fitness/trainer/add/" class="px-5 py-2 rounded-lg font-bold text-sm" style="background:#00f3ff;color:#000">Add First Trainer</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ── BOOKINGS (read-only monitor) ── -->
+        <div id="section-bookings" class="admin-section hidden">
+            <div class="flex justify-between items-center mb-5 flex-wrap gap-3">
+                <div>
+                    <h1 class="font-display text-2xl font-bold">All Bookings</h1>
+                    <p class="text-xs text-gray-500 mt-0.5"><i class="fa-solid fa-eye mr-1"></i>Monitor only — only trainers can accept or cancel bookings</p>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="filterAdminBookings('all')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold active-filter" style="background:#00f3ff;color:#000" data-f="all">All ({{ total_bookings }})</button>
+                    <button onclick="filterAdminBookings('pending')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="pending">Pending ({{ pending_count }})</button>
+                    <button onclick="filterAdminBookings('confirmed')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="confirmed">Confirmed ({{ confirmed_count }})</button>
+                    <button onclick="filterAdminBookings('cancelled')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="cancelled">Cancelled ({{ cancelled_count }})</button>
+                    <button onclick="filterAdminBookings('expired')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="expired">Expired ({{ expired_count }})</button>
+                </div>
+            </div>
+
+            {% if bookings %}
+            <div class="space-y-3" id="adminBookingList">
+                {% for b in bookings %}
+                <div class="glass-card p-4 rounded-xl admin-booking-row" data-status="{{ b.status }}">
+                    <div class="flex flex-wrap justify-between items-start gap-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <span class="font-bold text-sm">{{ b.member.get_full_name|default:b.member.username }}</span>
+                                <i class="fa-solid fa-arrow-right text-gray-600 text-xs"></i>
+                                <span class="text-sm font-bold" style="color:#00f3ff">{{ b.trainer.name }}</span>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                {{ b.member.email }} &nbsp;·&nbsp; {{ b.requested_at|date:"M d, Y · g:i A" }}
+                                {% if b.expires_at %}&nbsp;·&nbsp; Expires: {{ b.expires_at|date:"M d, Y g:i A" }}{% endif %}
+                            </div>
+                            {% if b.notes %}<p class="text-gray-500 text-xs mt-1 italic">"{{ b.notes }}"</p>{% endif %}
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                            <span class="status-badge-{{ b.status }} text-xs px-2.5 py-1 rounded-full font-bold">{{ b.status|upper }}</span>
+                            <a href="{% url 'chat' b.id %}" class="px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1" style="background:rgba(0,243,255,.15);color:#00f3ff;border:1px solid rgba(0,243,255,.3)">
+                                <i class="fa-solid fa-eye text-xs"></i> View Chat
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-16 text-gray-500">
+                <i class="fa-solid fa-calendar-xmark text-5xl mb-4 block"></i>
+                <p>No bookings yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ── MESSAGES MONITOR ── -->
+        <div id="section-messages" class="admin-section hidden">
+            <div class="mb-6">
+                <h1 class="font-display text-2xl font-bold">Messages <span class="text-gradient">Monitor</span></h1>
+                <p class="text-gray-500 text-sm mt-0.5">Read-only view of all conversations between clients and trainers</p>
+            </div>
+
+            {% if conversations %}
+            <div class="space-y-3">
+                {% for convo in conversations %}
+                <div class="glass-card p-4 rounded-xl">
+                    <div class="flex items-center justify-between gap-4 flex-wrap">
+                        <div class="flex items-center gap-4 min-w-0">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">
+                                {{ convo.member.first_name|first|upper }}{{ convo.trainer.name|first|upper }}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="font-bold text-sm flex items-center gap-2 flex-wrap">
+                                    <span>{{ convo.member.get_full_name|default:convo.member.username }}</span>
+                                    <i class="fa-solid fa-comments text-gray-500 text-xs"></i>
+                                    <span style="color:#00f3ff">{{ convo.trainer.name }}</span>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-0.5">
+                                    {{ convo.messages.count }} message{{ convo.messages.count|pluralize }}
+                                    &nbsp;·&nbsp;
+                                    <span class="{% if convo.status == 'confirmed' %}text-green-400{% elif convo.status == 'expired' or convo.status == 'cancelled' %}text-red-400{% else %}text-yellow-400{% endif %}">{{ convo.status|upper }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <a href="{% url 'chat' convo.id %}" class="px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 flex-shrink-0" style="background:rgba(0,243,255,.15);color:#00f3ff;border:1px solid rgba(0,243,255,.3)">
+                            <i class="fa-solid fa-eye"></i> Monitor Chat
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-16 text-gray-500">
+                <i class="fa-solid fa-comments text-5xl mb-4 block opacity-30"></i>
+                <p>No conversations yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </main>
+</div>
+
+<script>
+// ── Sidebar section switcher ──────────────────────────────
+function showSection(name) {
+    document.querySelectorAll('.admin-section').forEach(s => s.classList.add('hidden'));
+    const target = document.getElementById('section-' + name);
+    if (target) target.classList.remove('hidden');
+
+    document.querySelectorAll('[id^="snav-"]').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.getElementById('snav-' + name);
+    if (activeBtn) activeBtn.classList.add('active');
+}
+
+// ── Mobile sidebar toggle ─────────────────────────────────
+function toggleSidebar() {
+    const sb = document.getElementById('adminSidebar');
+    sb.classList.toggle('hidden');
+    sb.classList.toggle('flex');
+}
+
+// ── Chart ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const ctx = document.getElementById('bookingChart');
+    if (!ctx) return;
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Confirmed', 'Cancelled', 'Expired'],
+            datasets: [{
+                data: [{{ pending_count }}, {{ confirmed_count }}, {{ cancelled_count }}, {{ expired_count }}],
+                backgroundColor: ['rgba(251,191,36,.75)','rgba(34,197,94,.75)','rgba(239,68,68,.75)','rgba(107,114,128,.75)'],
+                borderColor:     ['#fbbf24','#22c55e','#ef4444','#6b7280'],
+                borderWidth: 2,
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: true, cutout: '60%',
+            plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 16, font: { size: 12 } } } }
+        }
+    });
+});
+
+// ── Member search ─────────────────────────────────────────
+function filterAdminMembers(query) {
+    query = query.toLowerCase();
+    document.querySelectorAll('.admin-member-row').forEach(r => {
+        r.style.display = r.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+}
+
+// ── Booking filter ────────────────────────────────────────
+function filterAdminBookings(status) {
+    document.querySelectorAll('.admin-booking-row').forEach(r => {
+        r.style.display = (status === 'all' || r.dataset.status === status) ? '' : 'none';
+    });
+    document.querySelectorAll('.admin-booking-filter').forEach(b => {
+        const isActive = b.dataset.f === status;
+        b.style.background = isActive ? '#00f3ff' : 'rgba(255,255,255,0.1)';
+        b.style.color = isActive ? '#000' : '#fff';
+    });
+}
+
+// ── Toast ─────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+    const el = document.createElement('div');
+    const bg = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#00f3ff';
+    const tc = type === 'error' ? '#fff' : '#000';
+    el.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:8px;font-weight:700;font-size:.875rem;color:${tc};background:${bg};animation:slideIn .3s ease`;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+</script>
+
+{% endif %}
+</body>
+</html>

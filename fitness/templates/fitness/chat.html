@@ -1,0 +1,371 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat – PulseFitness</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body{background:#050505;color:#fff;font-family:'Inter',sans-serif;height:100vh;display:flex;flex-direction:column}
+        .glass-card{background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.01));backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.1)}
+        .msg-me{background:linear-gradient(135deg,rgba(0,243,255,.2),rgba(0,243,255,.1));border:1px solid rgba(0,243,255,.3);border-radius:18px 18px 4px 18px;align-self:flex-end}
+        .msg-them{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:18px 18px 18px 4px;align-self:flex-start}
+        #chatBox{overflow-y:auto;flex:1;padding:1.5rem;display:flex;flex-direction:column;gap:12px}
+        #chatBox::-webkit-scrollbar{width:4px}
+        #chatBox::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+        .chat-input{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;resize:none;outline:none;transition:border-color .2s}
+        .chat-input:focus{border-color:#00f3ff}
+        /* Recording animation */
+        @keyframes pulse-rec{0%,100%{opacity:1}50%{opacity:.3}}
+        .recording-dot{animation:pulse-rec 1s infinite;background:#ef4444;width:10px;height:10px;border-radius:50%;display:inline-block}
+        /* Voice player */
+        .voice-player{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:rgba(0,243,255,.08);border:1px solid rgba(0,243,255,.2);min-width:180px}
+        .voice-player audio{display:none}
+        .play-btn{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:transform .15s}
+        .play-btn:hover{transform:scale(1.1)}
+        .voice-progress{flex:1;height:3px;background:rgba(255,255,255,.15);border-radius:2px;cursor:pointer;position:relative}
+        .voice-progress-fill{height:100%;border-radius:2px;background:#00f3ff;width:0%;transition:width .1s linear}
+        .voice-duration{font-size:11px;color:#9ca3af;flex-shrink:0;font-mono:true;min-width:32px}
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="flex items-center gap-4 px-5 py-3 border-b border-white/10 flex-shrink-0" style="background:rgba(8,8,8,.97)">
+    <a href="{% if is_admin %}{% url 'admin_dashboard' %}{% elif trainer %}{% url 'trainer_dashboard' %}{% else %}{% url 'member_dashboard' %}{% endif %}"
+       class="text-gray-400 hover:text-white transition-colors">
+        <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <div class="relative">
+        {% if booking.trainer.photo %}
+        <img src="{{ booking.trainer.photo.url }}" class="w-10 h-10 rounded-full object-cover object-top" alt="{{ booking.trainer.name }}">
+        {% elif booking.trainer.static_photo_key %}
+        <img src="{% static booking.trainer.static_photo_key %}" class="w-10 h-10 rounded-full object-cover object-top" alt="{{ booking.trainer.name }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-black text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff);display:none">{{ booking.trainer.name|first|upper }}</div>
+        {% else %}
+        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-black text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">{{ booking.trainer.name|first|upper }}</div>
+        {% endif %}
+        <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black" style="background:#22c55e"></span>
+    </div>
+    <div class="flex-1 min-w-0">
+        <div class="font-bold text-sm truncate">
+            {{ booking.trainer.name }}
+            <span class="text-xs ml-1 font-normal" style="color:#00f3ff">↔ {{ booking.member.get_full_name|default:booking.member.username }}</span>
+        </div>
+        <div class="text-xs text-gray-500">{{ booking.trainer.get_specialty_display }}
+            <span class="ml-2 {% if booking.status == 'confirmed' %}text-green-400{% elif booking.status == 'cancelled' or booking.status == 'expired' %}text-red-400{% else %}text-yellow-400{% endif %}">
+                · {{ booking.status|upper }}
+            </span>
+        </div>
+    </div>
+    {% if is_admin %}
+    <span class="text-xs px-2 py-1 rounded-full font-bold" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)">
+        <i class="fa-solid fa-eye mr-1"></i>Admin View
+    </span>
+    {% endif %}
+    <a href="{% url 'home' %}" class="font-display text-sm font-bold tracking-tighter hidden sm:block" style="color:#00f3ff">PULSE<span class="text-white">FITNESS</span></a>
+</header>
+
+<!-- Chat messages -->
+<div id="chatBox">
+    {% for m in messages %}
+    <div class="max-w-xs md:max-w-md lg:max-w-lg px-4 py-2.5 {% if m.sender == request.user %}msg-me{% else %}msg-them{% endif %}">
+        {% if m.sender != request.user %}
+        <div class="text-xs font-bold mb-1" style="color:#00f3ff">{{ m.sender.get_full_name|default:m.sender.username }}</div>
+        {% endif %}
+        {% if m.voice_note %}
+        <div class="voice-player" data-src="{{ m.voice_note.url }}">
+            <audio preload="none"><source src="{{ m.voice_note.url }}"></audio>
+            <div class="play-btn" onclick="togglePlay(this)" style="background:rgba(0,243,255,.2);color:#00f3ff">
+                <i class="fa-solid fa-play text-xs"></i>
+            </div>
+            <div class="voice-progress" onclick="seekAudio(this, event)">
+                <div class="voice-progress-fill"></div>
+            </div>
+            <span class="voice-duration">0:00</span>
+        </div>
+        {% endif %}
+        {% if m.body %}
+        <p class="text-sm leading-relaxed{% if m.voice_note %} mt-1{% endif %}">{{ m.body }}</p>
+        {% endif %}
+        <div class="text-xs text-gray-500 mt-1 {% if m.sender == request.user %}text-right{% endif %}">{{ m.sent_at|date:"M d, H:i" }}</div>
+    </div>
+    {% empty %}
+    <div class="text-center text-gray-500 mt-16">
+        <i class="fa-solid fa-comments text-5xl mb-4 block opacity-30"></i>
+        <p class="text-sm">No messages yet. Say hello!</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Input bar — hidden for admin (read-only) -->
+{% if not is_admin %}
+<div class="flex-shrink-0 border-t border-white/10 p-4" style="background:rgba(8,8,8,.97)">
+    <!-- Voice recording status -->
+    <div id="recordingBar" class="hidden flex items-center gap-3 mb-3 px-4 py-2 rounded-xl" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3)">
+        <span class="recording-dot"></span>
+        <span class="text-sm font-bold text-red-400">Recording…</span>
+        <span id="recTimer" class="text-sm font-mono text-red-300">0:00</span>
+        <button onclick="cancelRecording()" class="ml-auto text-xs text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i> Cancel</button>
+    </div>
+
+    <div class="flex gap-3 items-end max-w-4xl mx-auto">
+        <!-- Voice note button -->
+        <button id="voiceBtn" onclick="toggleRecording()"
+            class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-110"
+            style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)"
+            title="Hold to record voice message">
+            <i class="fa-solid fa-microphone text-sm"></i>
+        </button>
+
+        <textarea id="msgInput" class="chat-input flex-1 px-4 py-3 rounded-2xl text-sm" rows="1"
+            placeholder="Type a message…"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+
+        <button onclick="sendMsg()" class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-110" style="background:#00f3ff;color:#000">
+            <i class="fa-solid fa-paper-plane text-sm"></i>
+        </button>
+    </div>
+</div>
+{% else %}
+<!-- Admin read-only banner -->
+<div class="flex-shrink-0 border-t border-white/10 p-4 text-center" style="background:rgba(8,8,8,.97)">
+    <p class="text-gray-500 text-sm"><i class="fa-solid fa-eye mr-2"></i>Admin monitor view — messages are read-only</p>
+</div>
+{% endif %}
+
+<script>
+const BOOKING_ID = {{ booking.id }};
+const CSRF       = '{{ csrf_token }}';
+const SEND_URL   = '{% url "send_message" booking.id %}';
+const POLL_URL   = '{% url "poll_messages" booking.id %}';
+const IS_ADMIN   = {{ is_admin|yesno:"true,false" }};
+const chatBox    = document.getElementById('chatBox');
+let lastId = {% if messages %}{{ messages.last.pk|default:0 }}{% else %}0{% endif %};
+
+chatBox.scrollTop = chatBox.scrollHeight;
+
+// ── Voice player logic ────────────────────────────────────
+document.querySelectorAll('.voice-player').forEach(initVoicePlayer);
+
+function initVoicePlayer(player) {
+    const audio   = player.querySelector('audio');
+    const btn     = player.querySelector('.play-btn');
+    const fill    = player.querySelector('.voice-progress-fill');
+    const durEl   = player.querySelector('.voice-duration');
+
+    audio.addEventListener('loadedmetadata', () => {
+        durEl.textContent = fmtTime(audio.duration);
+    });
+    audio.addEventListener('timeupdate', () => {
+        const pct = audio.duration ? (audio.currentTime / audio.duration * 100) : 0;
+        fill.style.width = pct + '%';
+        durEl.textContent = fmtTime(audio.currentTime);
+    });
+    audio.addEventListener('ended', () => {
+        btn.innerHTML = '<i class="fa-solid fa-play text-xs"></i>';
+        fill.style.width = '0%';
+        durEl.textContent = fmtTime(audio.duration || 0);
+    });
+}
+
+function togglePlay(btn) {
+    const player = btn.closest('.voice-player');
+    const audio  = player.querySelector('audio');
+    // Pause all others
+    document.querySelectorAll('.voice-player audio').forEach(a => {
+        if (a !== audio) { a.pause(); a.currentTime = 0;
+            a.closest('.voice-player').querySelector('.play-btn').innerHTML = '<i class="fa-solid fa-play text-xs"></i>';
+        }
+    });
+    if (audio.paused) {
+        audio.play();
+        btn.innerHTML = '<i class="fa-solid fa-pause text-xs"></i>';
+    } else {
+        audio.pause();
+        btn.innerHTML = '<i class="fa-solid fa-play text-xs"></i>';
+    }
+}
+
+function seekAudio(progressEl, e) {
+    const audio = progressEl.closest('.voice-player').querySelector('audio');
+    const rect  = progressEl.getBoundingClientRect();
+    const pct   = (e.clientX - rect.left) / rect.width;
+    if (audio.duration) audio.currentTime = pct * audio.duration;
+}
+
+function fmtTime(sec) {
+    if (!sec || isNaN(sec)) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+// ── Voice recording ───────────────────────────────────────
+let mediaRecorder = null;
+let audioChunks   = [];
+let recInterval   = null;
+let recSeconds    = 0;
+let isRecording   = false;
+
+async function toggleRecording() {
+    if (isRecording) {
+        stopRecording();
+    } else {
+        startRecording();
+    }
+}
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks   = [];
+        recSeconds    = 0;
+
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = sendVoiceNote;
+
+        mediaRecorder.start();
+        isRecording = true;
+
+        document.getElementById('recordingBar').classList.remove('hidden');
+        const voiceBtn = document.getElementById('voiceBtn');
+        voiceBtn.style.background = 'rgba(239,68,68,.3)';
+        voiceBtn.style.color = '#ef4444';
+        voiceBtn.style.borderColor = 'rgba(239,68,68,.5)';
+        voiceBtn.innerHTML = '<i class="fa-solid fa-stop text-sm"></i>';
+
+        recInterval = setInterval(() => {
+            recSeconds++;
+            document.getElementById('recTimer').textContent = fmtTime(recSeconds);
+            if (recSeconds >= 120) stopRecording(); // max 2 min
+        }, 1000);
+    } catch (err) {
+        alert('Microphone access denied. Please allow microphone permissions.');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    clearInterval(recInterval);
+    isRecording = false;
+    document.getElementById('recordingBar').classList.add('hidden');
+    const voiceBtn = document.getElementById('voiceBtn');
+    voiceBtn.style.background = 'rgba(176,38,255,.2)';
+    voiceBtn.style.color = '#b026ff';
+    voiceBtn.style.borderColor = 'rgba(176,38,255,.3)';
+    voiceBtn.innerHTML = '<i class="fa-solid fa-microphone text-sm"></i>';
+}
+
+function cancelRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.onstop = null; // don't send
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    clearInterval(recInterval);
+    isRecording = false;
+    audioChunks = [];
+    document.getElementById('recordingBar').classList.add('hidden');
+    const voiceBtn = document.getElementById('voiceBtn');
+    voiceBtn.style.background = 'rgba(176,38,255,.2)';
+    voiceBtn.style.color = '#b026ff';
+    voiceBtn.style.borderColor = 'rgba(176,38,255,.3)';
+    voiceBtn.innerHTML = '<i class="fa-solid fa-microphone text-sm"></i>';
+}
+
+function sendVoiceNote() {
+    if (audioChunks.length === 0) return;
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    const fd   = new FormData();
+    fd.append('voice_note', blob, 'voice.webm');
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fetch(SEND_URL, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => { if (d.success) appendMsg(d); })
+        .catch(() => alert('Failed to send voice note.'));
+}
+
+// ── Text message ──────────────────────────────────────────
+function appendMsg(m) {
+    const empty = chatBox.querySelector('.text-center');
+    if (empty) empty.remove();
+
+    const div = document.createElement('div');
+    div.className = `max-w-xs md:max-w-md lg:max-w-lg px-4 py-2.5 ${m.is_me ? 'msg-me' : 'msg-them'}`;
+
+    let inner = !m.is_me ? `<div class="text-xs font-bold mb-1" style="color:#00f3ff">${escHtml(m.sender)}</div>` : '';
+
+    if (m.voice_url) {
+        inner += `<div class="voice-player">
+            <audio preload="none"><source src="${m.voice_url}"></audio>
+            <div class="play-btn" onclick="togglePlay(this)" style="background:rgba(0,243,255,.2);color:#00f3ff">
+                <i class="fa-solid fa-play text-xs"></i>
+            </div>
+            <div class="voice-progress" onclick="seekAudio(this, event)">
+                <div class="voice-progress-fill"></div>
+            </div>
+            <span class="voice-duration">0:00</span>
+        </div>`;
+    }
+    if (m.body) {
+        inner += `<p class="text-sm leading-relaxed${m.voice_url ? ' mt-1' : ''}">${escHtml(m.body)}</p>`;
+    }
+    inner += `<div class="text-xs text-gray-500 mt-1 ${m.is_me ? 'text-right' : ''}">${m.sent_at}</div>`;
+
+    div.innerHTML = inner;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    if (m.id > lastId) lastId = m.id;
+
+    // Init voice player on new message
+    const vp = div.querySelector('.voice-player');
+    if (vp) initVoicePlayer(vp);
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function sendMsg() {
+    const input = document.getElementById('msgInput');
+    const body  = input.value.trim();
+    if (!body) return;
+    input.value = '';
+    input.style.height = 'auto';
+
+    const fd = new FormData();
+    fd.append('body', body);
+    fd.append('csrfmiddlewaretoken', CSRF);
+
+    fetch(SEND_URL, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => { if (d.success) appendMsg(d); });
+}
+
+// Auto-resize textarea
+const msgInput = document.getElementById('msgInput');
+if (msgInput) {
+    msgInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+}
+
+// Poll for new messages every 3 seconds
+function pollMsgs() {
+    fetch(`${POLL_URL}?after=${lastId}`)
+        .then(r => r.json())
+        .then(d => { if (d.messages) d.messages.forEach(appendMsg); });
+}
+setInterval(pollMsgs, 3000);
+</script>
+</body>
+</html>

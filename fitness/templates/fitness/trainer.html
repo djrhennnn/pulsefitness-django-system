@@ -1,0 +1,1265 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseFitness | Trainer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body{background:#050505;color:#fff;font-family:'Inter',sans-serif}
+        .glass-card{background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.01));backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 32px rgba(0,0,0,.37)}
+        .form-input{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff}
+        .form-input:focus{border-color:#00f3ff;outline:none}
+        ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0a0a}
+        ::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+        .tab-active{color:#00f3ff !important;background:rgba(0,243,255,.07) !important}
+        .status-badge-pending{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
+        .status-badge-confirmed{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+        .status-badge-cancelled{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+        .status-badge-completed{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
+        @keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+        .star-btn{cursor:pointer;font-size:1.6rem;color:#4b5563;transition:color .15s ease}
+        .star-btn.active{color:#fbbf24}
+        .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center}
+        option{background:#1f2937}
+
+        /* ── MOBILE RESPONSIVE FIXES ── */
+
+        /* Bottom nav active state */
+        .mobile-tab-btn{transition:color .15s ease}
+        .mobile-tab-btn.active-tab{color:#00f3ff !important}
+
+        /* Exercise row grid: stack on tiny screens */
+        @media(max-width:480px){
+            .ex-grid{grid-template-columns:1fr 1fr !important}
+        }
+
+        /* Header: hide trainer name badge on very small screens, keep logout */
+        @media(max-width:400px){
+            .trainer-name-badge{display:none !important}
+        }
+
+        /* Main padding: account for bottom tab bar */
+        @media(max-width:1023px){
+            .trainer-main{padding-bottom:5rem !important}
+        }
+
+        /* Booking card actions: wrap neatly on mobile */
+        @media(max-width:640px){
+            .booking-actions-wrap{flex-wrap:wrap !important;gap:0.4rem !important}
+            /* Client table: make scrollable */
+            .client-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+            /* Stats grid: 2 cols on mobile */
+            .trainer-stats-grid{grid-template-columns:1fr 1fr !important}
+            /* Booking filter buttons: scroll horizontally */
+            .booking-filters{flex-wrap:nowrap !important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+            .booking-filters::-webkit-scrollbar{height:0}
+            /* Schedule header */
+            .schedule-header{flex-direction:column;align-items:flex-start !important}
+            /* Calendar cells smaller */
+            #calGrid .h-12{height:2.5rem}
+            /* Workout modal full width */
+            #workoutPlanModal > div{margin:0.5rem !important;padding:1rem !important}
+            /* Rate client modal */
+            #rateClientModal > div{margin:0 0.75rem;padding:1.5rem !important}
+            /* Toast position above bottom nav */
+            .toast-el{bottom:70px !important}
+        }
+
+        @media(max-width:360px){
+            /* Very small phones */
+            .booking-actions-wrap .px-3{padding-left:0.5rem !important;padding-right:0.5rem !important}
+        }
+
+        /* Smooth tab content transitions */
+        .tab-content{animation:fadeIn .2s ease}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    </style>
+</head>
+<body>
+
+{% if not user.is_authenticated or not trainer %}
+<div class="min-h-screen flex items-center justify-center">
+    <div class="text-center">
+        <i class="fa-solid fa-lock text-5xl text-red-400 mb-4 block"></i>
+        <p class="text-red-400 text-xl mb-6">Trainer account required.</p>
+        <a href="{% url 'home' %}" class="px-6 py-3 rounded-lg font-bold" style="background:#00f3ff;color:#000">Go Home</a>
+    </div>
+</div>
+{% else %}
+
+<!-- Rate Client Modal -->
+<div id="rateClientModal" class="modal-overlay hidden">
+    <div class="glass-card rounded-2xl p-8 w-full max-w-md mx-4 relative">
+        <button onclick="closeRateClientModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+        <h2 class="font-display text-2xl font-bold mb-2">RATE <span style="color:#fbbf24">CLIENT</span></h2>
+        <p class="text-gray-400 text-sm mb-6" id="rateClientName">How was this client?</p>
+        <input type="hidden" id="rateClientBookingId">
+        <div class="flex gap-3 justify-center mb-6" id="clientStarRow">
+            <span class="star-btn" data-v="1" onclick="setClientStars(1)">★</span>
+            <span class="star-btn" data-v="2" onclick="setClientStars(2)">★</span>
+            <span class="star-btn" data-v="3" onclick="setClientStars(3)">★</span>
+            <span class="star-btn" data-v="4" onclick="setClientStars(4)">★</span>
+            <span class="star-btn" data-v="5" onclick="setClientStars(5)">★</span>
+        </div>
+        <textarea id="rateClientComment" class="form-input w-full px-4 py-3 rounded-lg text-sm mb-4" rows="3" placeholder="Leave a comment about this client (optional)..."></textarea>
+        <button onclick="submitClientRating()" class="w-full py-3 font-bold rounded-lg" style="background:#fbbf24;color:#000">SUBMIT RATING</button>
+    </div>
+</div>
+
+<!-- Workout Plan Builder Modal -->
+<div id="workoutPlanModal" class="modal-overlay hidden" style="align-items:flex-start;padding:2rem 1rem;overflow-y:auto">
+    <div class="glass-card rounded-2xl p-6 w-full max-w-2xl mx-auto relative">
+        <button onclick="closeWorkoutModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+        <h2 class="font-display text-2xl font-bold mb-1">CREATE <span style="color:#b026ff">WORKOUT PLAN</span></h2>
+        <p class="text-gray-400 text-sm mb-5" id="planClientName"></p>
+        <input type="hidden" id="planBookingId">
+
+        <div class="mb-4">
+            <label class="block text-xs text-gray-400 mb-1">Plan Title *</label>
+            <input type="text" id="planTitle" class="form-input w-full px-4 py-2 rounded-lg text-sm" placeholder="e.g. Week 1 Strength Routine">
+        </div>
+        <div class="mb-5">
+            <label class="block text-xs text-gray-400 mb-1">Notes / Instructions</label>
+            <textarea id="planNotes" class="form-input w-full px-4 py-2 rounded-lg text-sm" rows="2" placeholder="General notes for the client..."></textarea>
+        </div>
+
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-sm">Exercises</h3>
+            <button onclick="addExerciseRow()" class="text-xs px-3 py-1 rounded-lg font-bold" style="background:rgba(0,243,255,.15);color:#00f3ff;border:1px solid rgba(0,243,255,.3)">
+                <i class="fa-solid fa-plus mr-1"></i>Add Exercise
+            </button>
+        </div>
+        <div id="exerciseRows" class="space-y-3 mb-5"></div>
+
+        <!-- Quick-add from presets -->
+        <div class="mb-5 p-3 rounded-xl" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)">
+            <div class="text-xs text-gray-400 mb-2">Quick Add Presets:</div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="addPreset('Push-ups','4','10-12 reps','3')" class="text-xs px-2 py-1 rounded font-medium" style="background:rgba(176,38,255,.15);color:#b026ff">Push-ups</button>
+                <button onclick="addPreset('Squats','4','12-15 reps','4')" class="text-xs px-2 py-1 rounded font-medium" style="background:rgba(176,38,255,.15);color:#b026ff">Squats</button>
+                <button onclick="addPreset('Deadlifts','3','8-10 reps','5')" class="text-xs px-2 py-1 rounded font-medium" style="background:rgba(176,38,255,.15);color:#b026ff">Deadlifts</button>
+                <button onclick="addPreset('Burpees','3','15 reps','3')" class="text-xs px-2 py-1 rounded font-medium" style="background:rgba(0,243,255,.1);color:#00f3ff">Burpees</button>
+                <button onclick="addPreset('Plank','3','45 sec','2')" class="text-xs px-2 py-1 rounded font-medium" style="background:rgba(0,243,255,.1);color:#00f3ff">Plank</button>
+                <button onclick="addPreset('Pull-ups','3','8 reps','4')" class="text-xs px-2 py-1 rounded font-medium" style="background:rgba(0,243,255,.1);color:#00f3ff">Pull-ups</button>
+                <button onclick="addPreset('Running','1','20 min','20')" class="text-xs px-2 py-1 rounded font-medium" style="background:rgba(34,197,94,.1);color:#22c55e">Running</button>
+                <button onclick="addPreset('Cycling','1','15 min','15')" class="text-xs px-2 py-1 rounded font-medium" style="background:rgba(34,197,94,.1);color:#22c55e">Cycling</button>
+            </div>
+        </div>
+
+        <button onclick="savePlan()" class="w-full py-3 font-bold rounded-lg" style="background:#b026ff;color:#fff">
+            <i class="fa-solid fa-floppy-disk mr-2"></i>SAVE WORKOUT PLAN
+        </button>
+    </div>
+</div>
+
+<!-- Header -->
+<header class="fixed top-0 left-0 right-0 z-40 h-16 border-b border-white/10 flex items-center justify-between px-5" style="background:rgba(8,8,8,.97);backdrop-filter:blur(12px)">
+    <a href="{% url 'home' %}" class="font-display text-lg font-bold flex items-center gap-2 tracking-tighter">
+        <i class="fa-solid fa-bolt" style="color:#00f3ff"></i>PULSE<span style="color:#00f3ff">FITNESS</span>
+    </a>
+    <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold trainer-name-badge" style="background:rgba(0,243,255,.1);border:1px solid rgba(0,243,255,.3);color:#00f3ff">
+            <i class="fa-solid fa-dumbbell"></i> {{ trainer.name }}
+        </div>
+        <a href="{% url 'logout' %}" class="px-3 py-1.5 text-xs rounded-lg font-bold" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)">
+            <i class="fa-solid fa-right-from-bracket mr-1"></i>Logout
+        </a>
+    </div>
+</header>
+
+<div class="flex pt-16 min-h-screen">
+
+    <!-- Sidebar -->
+    <aside class="fixed top-16 left-0 bottom-0 w-56 border-r border-white/10 p-4 hidden lg:flex flex-col" style="background:rgba(10,10,10,.9)">
+        <div class="glass-card p-4 rounded-xl mb-6 text-center">
+            <div class="relative inline-block mb-2">
+                {% if trainer.photo %}
+                <img src="{{ trainer.photo.url }}" class="w-14 h-14 rounded-full object-cover object-top border-2 mx-auto" style="border-color:#00f3ff" alt="{{ trainer.name }}">
+                {% elif trainer.static_photo_key %}
+                <img src="{% static trainer.static_photo_key %}" class="w-14 h-14 rounded-full object-cover object-top border-2 mx-auto" style="border-color:#00f3ff" alt="{{ trainer.name }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="w-14 h-14 rounded-full items-center justify-center text-xl font-bold text-black mx-auto" style="background:linear-gradient(135deg,#00f3ff,#b026ff);display:none">{{ trainer.name|first|upper }}</div>
+                {% else %}
+                <div class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-black mx-auto" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">{{ trainer.name|first|upper }}</div>
+                {% endif %}
+            </div>
+            <div class="font-bold text-sm">{{ trainer.name }}</div>
+            <div class="text-xs mt-0.5" style="color:#00f3ff">{{ trainer.get_specialty_display }}</div>
+            <!-- Trainer's own rating -->
+            {% if trainer.avg_rating %}
+            <div class="flex justify-center items-center gap-1 mt-2">
+                <span class="text-yellow-400 text-xs">★</span>
+                <span class="text-yellow-400 text-xs font-bold">{{ trainer.avg_rating }}</span>
+                <span class="text-gray-500 text-xs">({{ trainer.rating_count }})</span>
+            </div>
+            {% else %}
+            <div class="text-xs text-gray-500 mt-1">No ratings yet</div>
+            {% endif %}
+            {% if trainer.is_available %}
+            <span class="inline-block mt-2 text-xs px-2 py-0.5 rounded-full" style="background:rgba(34,197,94,.2);color:#22c55e">Available</span>
+            {% else %}
+            <span class="inline-block mt-2 text-xs px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,.2);color:#f87171">Unavailable</span>
+            {% endif %}
+        </div>
+
+        <nav class="space-y-1 flex-1">
+            <button onclick="showTab('overview')" id="tab-btn-overview" class="tab-btn tab-active w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-sm font-medium">
+                <i class="fa-solid fa-chart-line w-4"></i>Overview
+            </button>
+            <button onclick="showTab('bookings')" id="tab-btn-bookings" class="tab-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <i class="fa-solid fa-calendar-check w-4"></i>My Bookings
+                {% if pending_count > 0 %}<span class="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold" style="background:#fbbf24;color:#000">{{ pending_count }}</span>{% endif %}
+            </button>
+            <button onclick="showTab('clients')" id="tab-btn-clients" class="tab-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <i class="fa-solid fa-users w-4"></i>My Clients
+            </button>
+            <button onclick="showTab('schedule')" id="tab-btn-schedule" class="tab-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <i class="fa-solid fa-calendar w-4"></i>Schedule
+            </button>
+        </nav>
+
+        <div class="pt-4 border-t border-white/10">
+            <a href="{% url 'logout' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-500/20 text-sm text-red-400 transition-colors">
+                <i class="fa-solid fa-right-from-bracket w-4"></i>Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- Mobile bottom tab bar -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/10" style="background:rgba(10,10,10,.97);backdrop-filter:blur(12px)">
+        <button onclick="showTab('overview');setMobileTabActive(this)"  class="mobile-tab-btn flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 active-tab" style="color:#00f3ff"><i class="fa-solid fa-chart-line text-base"></i><span>Overview</span></button>
+        <button onclick="showTab('bookings');setMobileTabActive(this)"  class="mobile-tab-btn flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1" style="color:#6b7280"><i class="fa-solid fa-calendar-check text-base"></i><span>Bookings</span></button>
+        <button onclick="showTab('clients');setMobileTabActive(this)"   class="mobile-tab-btn flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1" style="color:#6b7280"><i class="fa-solid fa-users text-base"></i><span>Clients</span></button>
+        <button onclick="showTab('schedule');setMobileTabActive(this)"  class="mobile-tab-btn flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1" style="color:#6b7280"><i class="fa-solid fa-calendar text-base"></i><span>Schedule</span></button>
+    </div>
+
+    <!-- Main -->
+    <main class="flex-1 lg:ml-56 p-5 md:p-8 pb-24 lg:pb-8 trainer-main">
+
+        {% csrf_token %}
+
+        <!-- ── OVERVIEW TAB ── -->
+        <div id="tab-overview" class="tab-content">
+            <div class="mb-6">
+                <h1 class="font-display text-2xl font-bold">Welcome, <span style="color:#00f3ff">{{ trainer.name }}</span></h1>
+                <p class="text-gray-500 text-sm mt-1">{{ trainer.get_specialty_display }} · Your personal dashboard</p>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 trainer-stats-grid">
+                <div class="glass-card p-4 rounded-xl text-center">
+                    <div class="text-2xl font-bold mb-1" style="color:#00f3ff">{{ bookings.count }}</div>
+                    <div class="text-xs text-gray-400">Total Bookings</div>
+                </div>
+                <div class="glass-card p-4 rounded-xl text-center">
+                    <div class="text-2xl font-bold mb-1 text-yellow-400">{{ pending_count }}</div>
+                    <div class="text-xs text-gray-400">Pending</div>
+                </div>
+                <div class="glass-card p-4 rounded-xl text-center">
+                    <div class="text-2xl font-bold mb-1 text-green-400">{{ confirmed_count }}</div>
+                    <div class="text-xs text-gray-400">Confirmed</div>
+                </div>
+                <div class="glass-card p-4 rounded-xl text-center">
+                    {% if trainer.avg_rating %}
+                    <div class="text-2xl font-bold mb-1 text-yellow-400">{{ trainer.avg_rating }}★</div>
+                    <div class="text-xs text-gray-400">Avg Rating ({{ trainer.rating_count }})</div>
+                    {% else %}
+                    <div class="text-2xl font-bold mb-1" style="color:#b026ff">{{ members.count }}</div>
+                    <div class="text-xs text-gray-400">My Clients</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Pending rate clients alert -->
+            {% if pending_rate_client %}
+            <div class="p-4 rounded-xl mb-6 flex items-center gap-4" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3)">
+                <i class="fa-solid fa-star text-yellow-400 text-xl"></i>
+                <div class="flex-1">
+                    <div class="font-bold text-yellow-400 text-sm mb-1">Rate {{ pending_rate_client|length }} client{{ pending_rate_client|length|pluralize }}!</div>
+                    <div class="flex flex-wrap gap-2">
+                        {% for b in pending_rate_client %}
+                        <button onclick="openRateClientModal({{ b.id }}, '{{ b.member.get_full_name|default:b.member.username|escapejs }}')" class="text-xs px-3 py-1 rounded-full font-bold" style="background:rgba(251,191,36,.2);color:#fbbf24;border:1px solid rgba(251,191,36,.4)">
+                            Rate {{ b.member.get_full_name|default:b.member.username }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if pending_count > 0 %}
+            <div class="p-4 rounded-xl mb-6 flex items-center gap-4" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3)">
+                <i class="fa-solid fa-bell text-yellow-400 text-xl"></i>
+                <div>
+                    <div class="font-bold text-yellow-400 text-sm">{{ pending_count }} booking{{ pending_count|pluralize }} waiting for your response</div>
+                    <button onclick="showTab('bookings')" class="text-xs text-yellow-300 underline mt-0.5">Review now →</button>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-display text-base font-bold">Recent Bookings</h3>
+                    <button onclick="showTab('bookings')" class="text-xs font-bold" style="color:#00f3ff">View all →</button>
+                </div>
+                {% if bookings %}
+                <div class="space-y-3">
+                    {% for b in bookings|slice:":5" %}
+                    <div class="flex justify-between items-center gap-3 p-3 rounded-lg" style="background:rgba(255,255,255,.03)">
+                        <div>
+                            <div class="font-medium text-sm">{{ b.member.get_full_name|default:b.member.username }}</div>
+                            <div class="text-xs text-gray-500">{{ b.requested_at|date:"M d, Y" }}</div>
+                        </div>
+                        <span class="status-badge-{{ b.status }} text-xs px-2.5 py-1 rounded-full font-bold">{{ b.status|upper }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-sm text-center py-6">No bookings yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ── BOOKINGS TAB ── -->
+        <div id="tab-bookings" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-5 flex-wrap gap-3">
+                <h2 class="font-display text-xl font-bold">MY BOOKINGS</h2>
+                <div class="flex gap-2 flex-wrap booking-filters">
+                    <button onclick="filterBookings('all')"       class="booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:#00f3ff;color:#000" data-f="all">All</button>
+                    <button onclick="filterBookings('pending')"   class="booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="pending">Pending</button>
+                    <button onclick="filterBookings('confirmed')" class="booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="confirmed">Confirmed</button>
+                    <button onclick="filterBookings('cancelled')" class="booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="cancelled">Cancelled</button>
+                    <button onclick="filterBookings('completed')" class="booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="completed">Completed</button>
+                </div>
+            </div>
+
+            {% if bookings %}
+            <div class="space-y-3" id="bookingList">
+                {% for b in bookings %}
+                <div class="glass-card p-4 rounded-xl booking-row" data-status="{{ b.status }}" id="tr-booking-{{ b.id }}">
+                    <div class="flex flex-wrap justify-between items-start gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            {% if b.member.profile.photo %}
+                            <img src="{{ b.member.profile.photo.url }}" class="w-10 h-10 rounded-full object-cover object-top flex-shrink-0 border" style="border-color:rgba(0,243,255,.4)" alt="">
+                            {% else %}
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-black text-sm flex-shrink-0" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">{{ b.member.first_name|first|upper }}{{ b.member.last_name|first|upper }}</div>
+                            {% endif %}
+                            <div class="min-w-0">
+                                <div class="font-bold text-sm mb-0.5">{{ b.member.get_full_name|default:b.member.username }}</div>
+                                <div class="text-xs text-gray-500">{{ b.member.email }} · {{ b.requested_at|date:"M d, Y · g:i A" }}</div>
+                                {% if b.notes %}<p class="text-gray-400 text-xs mt-1 italic">"{{ b.notes }}"</p>{% endif %}
+                                {% if b.scheduled_sessions.exists %}
+                                <div class="mt-2 pt-2 border-t border-white/5">
+                                    <div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:#b026ff">
+                                        <i class="fa-regular fa-calendar mr-1"></i>Client's Requested Dates:
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                    {% for s in b.scheduled_sessions.all %}
+                                    <span class="text-xs px-2 py-1 rounded-lg" style="background:rgba(176,38,255,.12);color:#d8b4fe;border:1px solid rgba(176,38,255,.25)">
+                                        {{ s.session_date|date:"M d" }} · {{ s.session_time|time:"g:i A" }}
+                                    </span>
+                                    {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if b.status == 'confirmed' or b.status == 'completed' %}
+                                <div class="text-xs mt-1.5 font-mono" style="color:#00f3ff">
+                                    Sessions: <span id="done-{{ b.id }}">{{ b.sessions_done }}</span>/{{ b.total_sessions }}
+                                    · <span id="rem-{{ b.id }}">{{ b.sessions_remaining }}</span> remaining
+                                </div>
+                                <!-- Session progress bar -->
+                                <div class="mt-1.5 w-full bg-white/10 rounded-full h-1.5" style="max-width:180px">
+                                    <div class="h-1.5 rounded-full transition-all" style="background:#00f3ff;width:{{ b.sessions_done|floatformat:0 }}00%{% if b.total_sessions > 0 %}{% endif %}" id="prog-{{ b.id }}" data-done="{{ b.sessions_done }}" data-total="{{ b.total_sessions }}"></div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap booking-actions-wrap">
+                            <span class="status-badge-{{ b.status }} text-xs px-2.5 py-1 rounded-full font-bold" id="status-badge-{{ b.id }}">{{ b.status|upper }}</span>
+                            <a href="{% url 'chat' b.id %}" class="px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1 transition-all hover:opacity-80" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)">
+                                <i class="fa-solid fa-message text-xs"></i> Chat
+                            </a>
+                            <!-- Workout Plan button (confirmed) -->
+                            {% if b.status == 'confirmed' %}
+                            <button onclick="openWorkoutModal({{ b.id }}, '{{ b.member.get_full_name|default:b.member.username|escapejs }}')" class="px-3 py-1.5 rounded-lg font-bold text-xs" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)">
+                                <i class="fa-solid fa-clipboard-list mr-1"></i>Plan
+                            </button>
+                            <!-- Done Session button -->
+                            {% if not b.is_sessions_exhausted %}
+                            <button onclick="markSessionDone({{ b.id }})" id="done-btn-{{ b.id }}" class="px-3 py-1.5 rounded-lg font-bold text-xs" style="background:rgba(34,197,94,.2);color:#22c55e;border:1px solid rgba(34,197,94,.4)">
+                                <i class="fa-solid fa-check-circle mr-1"></i>Done Session
+                            </button>
+                            {% endif %}
+                            <button onclick="updateStatus({{ b.id }}, 'cancelled')" class="px-3 py-1 rounded-lg text-xs font-bold hover:opacity-80" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)">Cancel</button>
+                            {% elif b.status == 'pending' %}
+                            <button onclick="updateStatus({{ b.id }}, 'confirmed')" class="px-3 py-1 rounded-lg text-xs font-bold hover:opacity-80" style="background:#22c55e;color:#000">
+                                <i class="fa-solid fa-check mr-1"></i>Confirm
+                            </button>
+                            <button onclick="updateStatus({{ b.id }}, 'cancelled')" class="px-3 py-1 rounded-lg text-xs font-bold hover:opacity-80" style="background:rgba(239,68,68,.2);color:#f87171;border:1px solid rgba(239,68,68,.3)">
+                                <i class="fa-solid fa-xmark mr-1"></i>Decline
+                            </button>
+                            {% endif %}
+                            <!-- Rate client for completed/cancelled -->
+                            {% if b.status == 'completed' or b.status == 'cancelled' %}
+                                {% if not b.client_rating %}
+                                <button onclick="openRateClientModal({{ b.id }}, '{{ b.member.get_full_name|default:b.member.username|escapejs }}')" class="px-3 py-1.5 rounded-lg font-bold text-xs" style="background:rgba(251,191,36,.2);color:#fbbf24;border:1px solid rgba(251,191,36,.4)">
+                                    <i class="fa-solid fa-star mr-1"></i>Rate Client
+                                </button>
+                                {% else %}
+                                <span class="text-xs text-yellow-400">★ Rated {{ b.client_rating.stars }}/5</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-16 text-gray-500">
+                <i class="fa-solid fa-calendar-xmark text-5xl mb-4 block"></i>
+                <p>No bookings yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ── CLIENTS TAB ── -->
+        <div id="tab-clients" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="font-display text-xl font-bold">MY CLIENTS</h2>
+                <span class="text-gray-400 text-sm">{{ members.count }} client{{ members.count|pluralize }}</span>
+            </div>
+            <div class="mb-4">
+                <input type="text" oninput="searchClients(this.value)" class="form-input px-4 py-2 rounded-lg text-sm w-full md:w-72" placeholder="Search clients…">
+            </div>
+            {% if members %}
+            <div class="glass-card rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto client-table-wrap">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-white/10 text-left">
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider">Client</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider">Email</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider">BMI</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider">Rating</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider">Sessions</th>
+                                <th class="px-4 py-3 text-gray-400 text-xs uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5" id="clientTable">
+                            {% for m in members %}
+                            <tr class="hover:bg-white/5 transition-colors client-row">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        {% if m.profile.photo %}
+                                        <img src="{{ m.profile.photo.url }}" class="w-9 h-9 rounded-full object-cover object-top flex-shrink-0" alt="">
+                                        {% else %}
+                                        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-black text-xs flex-shrink-0" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">{{ m.first_name|first|upper }}{{ m.last_name|first|upper }}</div>
+                                        {% endif %}
+                                        <span class="font-medium">{{ m.get_full_name|default:m.username }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-gray-400 text-xs">{{ m.email }}</td>
+                                <td class="px-4 py-3">
+                                    {% if m.profile.bmi %}
+                                    <span class="px-2 py-0.5 rounded text-xs font-bold" style="background:rgba(0,243,255,.15);color:#00f3ff">{{ m.profile.bmi }}</span>
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if m.profile.avg_rating %}
+                                    <span class="text-yellow-400 text-sm font-bold">★ {{ m.profile.avg_rating }}</span>
+                                    <span class="text-gray-500 text-xs ml-1">({{ m.profile.rating_count }})</span>
+                                    {% else %}
+                                    <span class="text-gray-600 text-xs">No rating</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 text-gray-400 text-xs">
+                                    {% for b in bookings %}{% if b.member == m %}
+                                    <div>{{ b.get_status_display }}: {{ b.sessions_done }}/{{ b.total_sessions }}</div>
+                                    {% endif %}{% endfor %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex gap-2 flex-wrap">
+                                    {% for b in bookings %}{% if b.member == m %}
+                                    <a href="{% url 'chat' b.id %}" class="px-2 py-1 rounded-lg font-bold text-xs flex items-center gap-1 w-fit" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)">
+                                        <i class="fa-solid fa-message text-xs"></i>Chat
+                                    </a>
+                                    {% if b.status == 'confirmed' %}
+                                    <button onclick="openWorkoutModal({{ b.id }}, '{{ m.get_full_name|default:m.username|escapejs }}')" class="px-2 py-1 rounded-lg font-bold text-xs" style="background:rgba(0,243,255,.15);color:#00f3ff;border:1px solid rgba(0,243,255,.3)">
+                                        <i class="fa-solid fa-clipboard-list"></i>Plan
+                                    </button>
+                                    {% endif %}
+                                    {% endif %}{% endfor %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="px-4 py-10 text-center text-gray-500">No clients yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-16 text-gray-500">
+                <i class="fa-solid fa-users text-5xl mb-4 block"></i>
+                <p>No clients yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ── SCHEDULE TAB ── -->
+        <div id="tab-schedule" class="tab-content hidden">
+
+            <!-- Header row -->
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
+                <div>
+                    <h2 class="font-display text-xl font-bold">TRAINING SCHEDULE</h2>
+                    <p class="text-gray-500 text-xs mt-0.5">Add sessions for your confirmed clients</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="switchView('calendar')" id="view-cal-btn" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all" style="background:#00f3ff;color:#000">
+                        <i class="fa-solid fa-calendar-days mr-1"></i>Calendar
+                    </button>
+                    <button onclick="switchView('list')" id="view-list-btn" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all" style="background:rgba(255,255,255,.1);color:#fff">
+                        <i class="fa-solid fa-list mr-1"></i>List
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick-add buttons: one per confirmed booking -->
+            {% with confirmed_list=bookings %}
+            {% if confirmed_count > 0 %}
+            <div class="mb-5 p-4 rounded-xl" style="background:rgba(0,243,255,.05);border:1px solid rgba(0,243,255,.15)">
+                <p class="text-xs text-gray-400 mb-3 font-semibold uppercase tracking-wider"><i class="fa-solid fa-plus-circle mr-1"></i>Add a session for a client:</p>
+                <div class="flex flex-wrap gap-2">
+                    {% for b in bookings %}
+                    {% if b.status == 'confirmed' %}
+                    <button onclick="openScheduleModal({{ b.id }}, '{{ b.member.get_full_name|default:b.member.username|escapejs }}')"
+                        class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-90"
+                        style="background:rgba(0,243,255,.15);border:1px solid rgba(0,243,255,.3);color:#00f3ff">
+                        {% if b.member.profile.photo %}
+                        <img src="{{ b.member.profile.photo.url }}" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">
+                        {% else %}
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-black flex-shrink-0" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">{{ b.member.first_name|first|upper }}</div>
+                        {% endif %}
+                        <i class="fa-solid fa-plus text-xs"></i> {{ b.member.get_full_name|default:b.member.username }}
+                    </button>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="mb-5 p-4 rounded-xl text-center text-gray-500 text-sm" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08)">
+                <i class="fa-solid fa-info-circle mr-1"></i> No confirmed bookings yet. Confirm a booking first to schedule sessions.
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <!-- CALENDAR VIEW -->
+            <div id="view-calendar">
+                <!-- Month navigation -->
+                <div class="flex items-center justify-between mb-4">
+                    <button onclick="prevMonth()" class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors" style="border:1px solid rgba(255,255,255,.1)">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                    <h3 class="font-display font-bold text-lg" id="calMonthLabel"></h3>
+                    <button onclick="nextMonth()" class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors" style="border:1px solid rgba(255,255,255,.1)">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Day headers -->
+                <div class="grid grid-cols-7 mb-1">
+                    {% for d in "SMTWTFS" %}
+                    <div class="text-center text-xs text-gray-500 font-bold py-2">{{ d }}</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Calendar grid -->
+                <div class="grid grid-cols-7 gap-1 mb-6" id="calGrid"></div>
+
+                <!-- Day sessions panel (shown when a day is clicked) -->
+                <div id="daySessions" class="hidden glass-card p-5 rounded-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold" id="daySessionsTitle"></h4>
+                        <button onclick="document.getElementById('daySessions').classList.add('hidden')" class="text-gray-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div id="daySessionsList" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- LIST VIEW -->
+            <div id="view-list" class="hidden">
+                <div class="flex gap-2 mb-4 flex-wrap">
+                    <button onclick="filterSched('all')"      class="sched-filter px-3 py-1 rounded-full text-xs font-bold" style="background:#00f3ff;color:#000" data-f="all">All</button>
+                    <button onclick="filterSched('upcoming')" class="sched-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1);color:#fff" data-f="upcoming">Upcoming</button>
+                    <button onclick="filterSched('today')"    class="sched-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1);color:#fff" data-f="today">Today</button>
+                    <button onclick="filterSched('past')"     class="sched-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1);color:#fff" data-f="past">Past</button>
+                </div>
+                <div id="scheduleList" class="space-y-3">
+                    <div class="text-center py-12 text-gray-500" id="schedEmptyMsg">
+                        <i class="fa-solid fa-calendar-xmark text-4xl mb-3 block"></i>
+                        <p>No sessions scheduled yet. Use the buttons above to add sessions.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+</div>
+
+<script>
+// ── CSRF ─────────────────────────────────────────────────
+function getCsrf() { const el = document.querySelector('[name=csrfmiddlewaretoken]'); return el ? el.value : ''; }
+
+// ── Tab switcher ─────────────────────────────────────────
+function showTab(name) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+    document.getElementById('tab-' + name).classList.remove('hidden');
+    document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('tab-active'); b.style.color='#9ca3af'; b.style.background='transparent'; });
+    const active = document.getElementById('tab-btn-' + name);
+    if (active) active.classList.add('tab-active');
+}
+
+// ── Mobile bottom tab active state ───────────────────────
+function setMobileTabActive(el) {
+    document.querySelectorAll('.mobile-tab-btn').forEach(b => {
+        b.style.color = '#6b7280';
+        b.classList.remove('active-tab');
+    });
+    el.style.color = '#00f3ff';
+    el.classList.add('active-tab');
+}
+
+// ── Booking filter ────────────────────────────────────────
+function filterBookings(status) {
+    document.querySelectorAll('.booking-row').forEach(r => {
+        r.style.display = (status === 'all' || r.dataset.status === status) ? '' : 'none';
+    });
+    document.querySelectorAll('.booking-filter').forEach(b => {
+        const active = b.dataset.f === status;
+        b.style.background = active ? '#00f3ff' : 'rgba(255,255,255,.1)';
+        b.style.color = active ? '#000' : '#fff';
+    });
+}
+
+// ── Client search ─────────────────────────────────────────
+function searchClients(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('.client-row').forEach(r => {
+        r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+// ── Update booking status ─────────────────────────────────
+function updateStatus(bookingId, status) {
+    const label = {confirmed:'confirm', cancelled:'cancel / decline', completed:'complete'}[status] || status;
+    if (!confirm(`Are you sure you want to ${label} this booking?`)) return;
+    const fd = new FormData();
+    fd.append('booking_id', bookingId);
+    fd.append('status', status);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+    fetch('{% url "trainer_update_booking" %}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { showToast('Booking ' + d.status + '!', 'success'); setTimeout(() => location.reload(), 1200); }
+            else showToast(d.error || 'Failed to update.', 'error');
+        }).catch(() => showToast('Network error.', 'error'));
+}
+
+// ── Mark session done ─────────────────────────────────────
+function markSessionDone(bookingId) {
+    if (!confirm('Mark one session as done for this client?')) return;
+    const fd = new FormData();
+    fd.append('booking_id', bookingId);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+    fetch('{% url "trainer_mark_session_done" %}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                // Update session counts in DOM
+                ['done-', 'sdone-'].forEach(pfx => {
+                    const el = document.getElementById(pfx + bookingId);
+                    if (el) el.textContent = d.sessions_done;
+                });
+                ['rem-', 'srem-'].forEach(pfx => {
+                    const el = document.getElementById(pfx + bookingId);
+                    if (el) el.textContent = d.sessions_remaining;
+                });
+                // Update progress bar
+                const prog = document.getElementById('prog-' + bookingId);
+                if (prog) {
+                    const pct = (d.sessions_done / d.total_sessions * 100).toFixed(0);
+                    prog.style.width = pct + '%';
+                }
+                if (d.completed) {
+                    showToast('All sessions done! Booking marked as completed.', 'success');
+                    // Disable done buttons
+                    ['done-btn-', 'sdone-btn-'].forEach(pfx => {
+                        const btn = document.getElementById(pfx + bookingId);
+                        if (btn) btn.remove();
+                    });
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showToast(`Session marked done! ${d.sessions_remaining} remaining.`, 'success');
+                }
+            } else {
+                showToast(d.error || 'Failed.', 'error');
+            }
+        }).catch(() => showToast('Network error.', 'error'));
+}
+
+// ── Rate client modal ─────────────────────────────────────
+let _clientStars = 0;
+function openRateClientModal(bookingId, clientName) {
+    _clientStars = 0;
+    document.getElementById('rateClientBookingId').value = bookingId;
+    document.getElementById('rateClientName').textContent = 'Rate your experience with ' + clientName;
+    document.getElementById('rateClientComment').value = '';
+    document.querySelectorAll('#clientStarRow .star-btn').forEach(s => { s.classList.remove('active'); s.style.color = '#4b5563'; });
+    document.getElementById('rateClientModal').classList.remove('hidden');
+}
+function closeRateClientModal() { document.getElementById('rateClientModal').classList.add('hidden'); }
+function setClientStars(n) {
+    _clientStars = n;
+    document.querySelectorAll('#clientStarRow .star-btn').forEach(s => {
+        const active = parseInt(s.dataset.v) <= n;
+        s.classList.toggle('active', active);
+        s.style.color = active ? '#fbbf24' : '#4b5563';
+    });
+}
+function submitClientRating() {
+    if (!_clientStars) { showToast('Please select a rating.', 'error'); return; }
+    const fd = new FormData();
+    fd.append('booking_id', document.getElementById('rateClientBookingId').value);
+    fd.append('stars', _clientStars);
+    fd.append('comment', document.getElementById('rateClientComment').value);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+    fetch('{% url "trainer_rate_client" %}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            closeRateClientModal();
+            showToast(d.message || d.error, d.success ? 'success' : 'error');
+            if (d.success) setTimeout(() => location.reload(), 1500);
+        }).catch(() => showToast('Network error.', 'error'));
+}
+
+// ── Workout plan modal ────────────────────────────────────
+let _exCount = 0;
+function openWorkoutModal(bookingId, clientName) {
+    document.getElementById('planBookingId').value = bookingId;
+    document.getElementById('planClientName').textContent = 'Creating a plan for ' + clientName;
+    document.getElementById('planTitle').value = '';
+    document.getElementById('planNotes').value = '';
+    document.getElementById('exerciseRows').innerHTML = '';
+    _exCount = 0;
+    addExerciseRow();
+    document.getElementById('workoutPlanModal').classList.remove('hidden');
+}
+function closeWorkoutModal() { document.getElementById('workoutPlanModal').classList.add('hidden'); }
+
+function addExerciseRow(name='', sets='3', reps='', duration='') {
+    _exCount++;
+    const id = _exCount;
+    const row = document.createElement('div');
+    row.id = 'ex-row-' + id;
+    row.className = 'p-3 rounded-xl relative';
+    row.style.background = 'rgba(255,255,255,0.04)';
+    row.style.border = '1px solid rgba(255,255,255,0.07)';
+    row.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+            <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style="background:rgba(0,243,255,.2);color:#00f3ff">${id}</span>
+            <input type="text" class="ex-name form-input flex-1 px-3 py-2 rounded-lg text-sm" placeholder="Exercise name" value="${name}">
+            <button onclick="document.getElementById('ex-row-${id}').remove()" class="text-gray-500 hover:text-red-400 ml-1"><i class="fa-solid fa-trash text-xs"></i></button>
+        </div>
+        <div class="grid grid-cols-3 gap-2 ex-grid">
+            <div>
+                <label class="text-xs text-gray-500 mb-1 block">Sets</label>
+                <input type="number" class="ex-sets form-input w-full px-3 py-2 rounded-lg text-sm" value="${sets}" min="1" max="20" placeholder="3">
+            </div>
+            <div>
+                <label class="text-xs text-gray-500 mb-1 block">Reps / Duration</label>
+                <input type="text" class="ex-reps form-input w-full px-3 py-2 rounded-lg text-sm" placeholder="10-12 reps" value="${reps}">
+            </div>
+            <div>
+                <label class="text-xs text-gray-500 mb-1 block">Time (min)</label>
+                <input type="number" class="ex-dur form-input w-full px-3 py-2 rounded-lg text-sm" placeholder="3" value="${duration}" min="0" step="0.5">
+            </div>
+        </div>`;
+    document.getElementById('exerciseRows').appendChild(row);
+}
+
+function addPreset(name, sets, reps, duration) {
+    addExerciseRow(name, sets, reps, duration);
+}
+
+function savePlan() {
+    const title = document.getElementById('planTitle').value.trim();
+    if (!title) { showToast('Please enter a plan title.', 'error'); return; }
+
+    const rows = document.getElementById('exerciseRows').querySelectorAll('[id^="ex-row-"]');
+    if (rows.length === 0) { showToast('Add at least one exercise.', 'error'); return; }
+
+    const exercises = [];
+    let valid = true;
+    rows.forEach(row => {
+        const name = row.querySelector('.ex-name').value.trim();
+        if (!name) { valid = false; return; }
+        exercises.push({
+            name: name,
+            sets: parseInt(row.querySelector('.ex-sets').value) || 3,
+            reps: row.querySelector('.ex-reps').value.trim(),
+            duration_min: parseFloat(row.querySelector('.ex-dur').value) || null,
+        });
+    });
+
+    if (!valid) { showToast('Please fill in all exercise names.', 'error'); return; }
+
+    const fd = new FormData();
+    fd.append('booking_id', document.getElementById('planBookingId').value);
+    fd.append('title', title);
+    fd.append('notes', document.getElementById('planNotes').value.trim());
+    fd.append('exercises', JSON.stringify(exercises));
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch('{% url "save_workout_plan" %}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            closeWorkoutModal();
+            showToast(d.success ? 'Workout plan saved and sent to client!' : (d.error || 'Failed.'), d.success ? 'success' : 'error');
+        }).catch(() => showToast('Network error.', 'error'));
+}
+
+// ── Toast ─────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+    const bg = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#00f3ff';
+    const tc = type === 'error' ? '#fff' : '#000';
+    const bottomOffset = window.innerWidth < 1024 ? '80px' : '24px';
+    const el = document.createElement('div');
+    el.className = 'toast-el';
+    el.style.cssText = `position:fixed;bottom:${bottomOffset};right:20px;z-index:9999;padding:12px 20px;border-radius:8px;font-weight:700;font-size:.875rem;color:${tc};background:${bg};animation:slideIn .3s ease;max-width:320px`;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+
+// ── Init progress bars ────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[id^="prog-"]').forEach(bar => {
+        const done  = parseInt(bar.dataset.done) || 0;
+        const total = parseInt(bar.dataset.total) || 1;
+        bar.style.width = (done / total * 100).toFixed(0) + '%';
+    });
+    loadSchedule();
+});
+
+// =============================================================
+// SCHEDULE SYSTEM
+// =============================================================
+let _allSessions = [];
+let _calYear, _calMonth;
+
+(function(){
+    const now = new Date();
+    _calYear  = now.getFullYear();
+    _calMonth = now.getMonth();
+})();
+
+const CAL_MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+
+function toDateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Load all sessions from server ─────────────────────────
+function loadSchedule() {
+    fetch('{% url "get_trainer_schedule" %}')
+        .then(r => r.json())
+        .then(d => {
+            _allSessions = d.sessions || [];
+            renderCalendar();
+            renderList('all');
+        })
+        .catch(() => {});
+}
+
+// ── Calendar ──────────────────────────────────────────────
+function renderCalendar() {
+    const lbl = document.getElementById('calMonthLabel');
+    if (lbl) lbl.textContent = CAL_MONTHS[_calMonth] + ' ' + _calYear;
+
+    const grid = document.getElementById('calGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const firstDay    = new Date(_calYear, _calMonth, 1).getDay();
+    const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
+    const todayStr    = toDateStr(new Date());
+
+    // Map date -> sessions
+    const byDay = {};
+    _allSessions.forEach(s => {
+        if (!byDay[s.date]) byDay[s.date] = [];
+        byDay[s.date].push(s);
+    });
+
+    // Blank leading cells
+    for (let i = 0; i < firstDay; i++) {
+        const b = document.createElement('div');
+        b.className = 'h-12 rounded-lg';
+        grid.appendChild(b);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const mm      = String(_calMonth + 1).padStart(2, '0');
+        const dd      = String(day).padStart(2, '0');
+        const dateStr = `${_calYear}-${mm}-${dd}`;
+        const sessions = byDay[dateStr] || [];
+        const isToday  = dateStr === todayStr;
+        const isPast   = dateStr < todayStr;
+
+        const cell = document.createElement('div');
+        cell.className = 'h-12 rounded-lg flex flex-col items-center justify-center cursor-pointer relative transition-all select-none';
+        cell.style.border = isToday
+            ? '1.5px solid #00f3ff'
+            : '1px solid rgba(255,255,255,.07)';
+        cell.style.background = isToday
+            ? 'rgba(0,243,255,.18)'
+            : isPast ? 'rgba(255,255,255,.02)' : 'rgba(255,255,255,.05)';
+
+        const numEl = document.createElement('span');
+        numEl.className = 'text-xs font-bold';
+        numEl.style.color = isToday ? '#00f3ff' : isPast ? '#374151' : '#fff';
+        numEl.textContent = day;
+        cell.appendChild(numEl);
+
+        if (sessions.length > 0) {
+            const dotRow = document.createElement('div');
+            dotRow.style.cssText = 'position:absolute;bottom:3px;display:flex;gap:2px';
+            const maxDots = Math.min(sessions.length, 3);
+            for (let k = 0; k < maxDots; k++) {
+                const dot = document.createElement('span');
+                dot.style.cssText = 'width:5px;height:5px;border-radius:50%;background:#00f3ff';
+                dotRow.appendChild(dot);
+            }
+            cell.appendChild(dotRow);
+        }
+
+        if (!isPast) {
+            cell.onmouseover = () => { cell.style.transform = 'scale(1.08)'; };
+            cell.onmouseout  = () => { cell.style.transform = 'scale(1)'; };
+        }
+        cell.onclick = () => showDaySessions(dateStr, sessions, day);
+        grid.appendChild(cell);
+    }
+}
+
+function showDaySessions(dateStr, sessions, day) {
+    const panel = document.getElementById('daySessions');
+    const title = document.getElementById('daySessionsTitle');
+    const list  = document.getElementById('daySessionsList');
+    if (!panel) return;
+
+    title.textContent = CAL_MONTHS[_calMonth] + ' ' + day + ', ' + _calYear;
+    list.innerHTML = '';
+
+    if (sessions.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No sessions on this day.</p>';
+    } else {
+        sessions.forEach(s => list.appendChild(buildSessionCard(s)));
+    }
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function prevMonth() {
+    _calMonth--;
+    if (_calMonth < 0) { _calMonth = 11; _calYear--; }
+    const panel = document.getElementById('daySessions');
+    if (panel) panel.classList.add('hidden');
+    renderCalendar();
+}
+
+function nextMonth() {
+    _calMonth++;
+    if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+    const panel = document.getElementById('daySessions');
+    if (panel) panel.classList.add('hidden');
+    renderCalendar();
+}
+
+// ── List view ─────────────────────────────────────────────
+function renderList(filter) {
+    const list  = document.getElementById('scheduleList');
+    const empty = document.getElementById('schedEmptyMsg');
+    if (!list) return;
+
+    const todayStr = toDateStr(new Date());
+    let sessions = [..._allSessions].sort((a, b) =>
+        (a.date + a.time).localeCompare(b.date + b.time));
+
+    if (filter === 'upcoming') sessions = sessions.filter(s => s.date >= todayStr);
+    else if (filter === 'today') sessions = sessions.filter(s => s.date === todayStr);
+    else if (filter === 'past')  sessions = sessions.filter(s => s.date <  todayStr);
+
+    list.querySelectorAll('.sched-card').forEach(c => c.remove());
+
+    if (sessions.length === 0) {
+        if (empty) empty.style.display = '';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+    sessions.forEach(s => list.appendChild(buildSessionCard(s)));
+}
+
+function buildSessionCard(s) {
+    const todayStr = toDateStr(new Date());
+    const isPast   = s.date < todayStr;
+    const isToday  = s.date === todayStr;
+
+    // Parse the date carefully to avoid timezone shifts
+    const [yr, mo, dy] = s.date.split('-').map(Number);
+    const dateObj = new Date(yr, mo - 1, dy);
+    const friendlyDate = dateObj.toLocaleDateString('en-PH', { weekday:'short', month:'short', day:'numeric' });
+
+    // Format time string
+    const [hh, mm] = s.time.split(':').map(Number);
+    const period   = hh >= 12 ? 'PM' : 'AM';
+    const h12      = hh % 12 || 12;
+    const friendlyTime = `${h12}:${String(mm).padStart(2,'0')} ${period}`;
+
+    const card = document.createElement('div');
+    card.className = 'glass-card p-4 rounded-xl sched-card flex flex-wrap justify-between items-start gap-3';
+    if (isPast) card.style.opacity = '0.55';
+
+    card.innerHTML = `
+        <div class="flex items-start gap-3">
+            <div class="w-12 h-14 rounded-xl flex flex-col items-center justify-center flex-shrink-0"
+                 style="background:${isToday ? 'rgba(0,243,255,.2);border:1.5px solid #00f3ff' : 'rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)'}">
+                <span class="font-black text-base leading-none" style="color:${isToday ? '#00f3ff' : '#fff'}">${dy}</span>
+                <span class="text-xs font-semibold" style="color:#6b7280">${CAL_MONTHS[mo-1].slice(0,3)}</span>
+            </div>
+            <div>
+                <div class="font-bold text-sm">${escHtml(s.member)}</div>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                    <span class="text-xs" style="color:#00f3ff"><i class="fa-solid fa-clock mr-1"></i>${friendlyTime}</span>
+                    <span class="text-xs text-gray-400"><i class="fa-solid fa-hourglass-half mr-1" style="color:#b026ff"></i>${s.duration_min} min</span>
+                    <span class="text-xs text-gray-400"><i class="fa-solid fa-location-dot mr-1" style="color:#22c55e"></i>${escHtml(s.location || 'Gym Floor')}</span>
+                </div>
+                ${s.notes ? `<p class="text-xs text-gray-500 italic mt-1">"${escHtml(s.notes)}"</p>` : ''}
+                ${isToday ? '<span class="inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full font-bold" style="background:rgba(0,243,255,.2);color:#00f3ff">TODAY</span>' : ''}
+            </div>
+        </div>
+        <button onclick="deleteSession(${s.id})"
+            class="text-gray-600 hover:text-red-400 transition-colors text-xs px-2 py-1 rounded-lg hover:bg-red-500/10 self-start"
+            title="Remove session">
+            <i class="fa-solid fa-trash"></i>
+        </button>`;
+    return card;
+}
+
+// ── View toggle ────────────────────────────────────────────
+function switchView(v) {
+    const calEl  = document.getElementById('view-calendar');
+    const listEl = document.getElementById('view-list');
+    const calBtn = document.getElementById('view-cal-btn');
+    const lstBtn = document.getElementById('view-list-btn');
+    if (!calEl || !listEl) return;
+
+    if (v === 'calendar') {
+        calEl.classList.remove('hidden');
+        listEl.classList.add('hidden');
+        calBtn.style.cssText = 'background:#00f3ff;color:#000;padding:.375rem .75rem;border-radius:.5rem;font-size:.75rem;font-weight:700';
+        lstBtn.style.cssText = 'background:rgba(255,255,255,.1);color:#fff;padding:.375rem .75rem;border-radius:.5rem;font-size:.75rem;font-weight:700';
+    } else {
+        calEl.classList.add('hidden');
+        listEl.classList.remove('hidden');
+        calBtn.style.cssText = 'background:rgba(255,255,255,.1);color:#fff;padding:.375rem .75rem;border-radius:.5rem;font-size:.75rem;font-weight:700';
+        lstBtn.style.cssText = 'background:#00f3ff;color:#000;padding:.375rem .75rem;border-radius:.5rem;font-size:.75rem;font-weight:700';
+    }
+}
+
+// ── List filter ────────────────────────────────────────────
+function filterSched(f) {
+    renderList(f);
+    document.querySelectorAll('.sched-filter').forEach(b => {
+        const active = b.dataset.f === f;
+        b.style.background = active ? '#00f3ff' : 'rgba(255,255,255,.1)';
+        b.style.color      = active ? '#000'    : '#fff';
+    });
+}
+
+// ── Schedule modal ─────────────────────────────────────────
+function openScheduleModal(bookingId, clientName) {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    now.setHours(now.getHours() + 1);
+
+    const el = document.getElementById('schedBookingId');
+    const nm = document.getElementById('schedModalClient');
+    if (el) el.value = bookingId;
+    if (nm) nm.textContent = 'Client: ' + clientName;
+
+    const today = toDateStr(new Date());
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    const dEl = document.getElementById('schedDate');
+    const tEl = document.getElementById('schedTime');
+    const duEl = document.getElementById('schedDuration');
+    const lEl = document.getElementById('schedLocation');
+    const nEl = document.getElementById('schedNotes');
+    if (dEl)  dEl.value  = today;
+    if (tEl)  tEl.value  = timeStr;
+    if (duEl) duEl.value = '60';
+    if (lEl)  lEl.value  = 'Gym Floor';
+    if (nEl)  nEl.value  = '';
+
+    const modal = document.getElementById('scheduleModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const errEl = document.getElementById('schedError');
+        if (errEl) errEl.style.display = 'none';
+    }
+}
+
+function closeScheduleModal() {
+    const modal = document.getElementById('scheduleModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function saveSchedule() {
+    const date  = document.getElementById('schedDate').value;
+    const time  = document.getElementById('schedTime').value;
+    const errEl = document.getElementById('schedError');
+    const btn   = document.getElementById('saveSchedBtn');
+
+    function showErr(msg) {
+        if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+        else showToast(msg, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'CONFIRM SCHEDULE'; }
+    }
+
+    if (!date || !time) { showErr('Please pick a date and time.'); return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    if (errEl) errEl.style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('booking_id',   document.getElementById('schedBookingId').value);
+    fd.append('session_date', date);
+    fd.append('session_time', time);
+    fd.append('duration_min', document.getElementById('schedDuration').value);
+    fd.append('location',     document.getElementById('schedLocation').value || 'Gym Floor');
+    fd.append('notes',        document.getElementById('schedNotes').value);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch('{% url "create_scheduled_session" %}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                closeScheduleModal();
+                _allSessions.push({
+                    id:           d.id,
+                    booking_id:   d.booking_id,
+                    member:       d.member_name,
+                    date:         d.session_date,
+                    time:         d.session_time,
+                    duration_min: d.duration_min,
+                    location:     d.location,
+                    notes:        d.notes,
+                    is_done:      false,
+                });
+                renderCalendar();
+                renderList('all');
+                showToast('Session scheduled for ' + d.member_name + '!', 'success');
+            } else {
+                showErr(d.error || 'Failed to schedule.');
+            }
+        })
+        .catch(err => showErr('Could not reach server. Check your connection.'));
+}
+
+function deleteSession(sessionId) {
+    if (!confirm('Remove this scheduled session?')) return;
+    const fd = new FormData();
+    fd.append('session_id', sessionId);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch('{% url "delete_scheduled_session" %}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                _allSessions = _allSessions.filter(s => s.id !== sessionId);
+                renderCalendar();
+                renderList('all');
+                const panel = document.getElementById('daySessions');
+                if (panel) panel.classList.add('hidden');
+                showToast('Session removed.', 'success');
+            } else {
+                showToast(d.error || 'Failed to remove.', 'error');
+            }
+        }).catch(() => showToast('Network error.', 'error'));
+}
+</script>
+
+{% endif %}
+<!-- ═══ SCHEDULE SESSION MODAL (top-level, always accessible) ═══ -->
+<div id="scheduleModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+    <div style="background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02));backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.15);border-radius:1.25rem;padding:2rem;width:100%;max-width:460px;margin:1rem;position:relative;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+        <button onclick="closeScheduleModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.2rem" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#9ca3af'">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <h2 style="font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:.25rem;color:#fff">
+            SCHEDULE <span style="color:#00f3ff">SESSION</span>
+        </h2>
+        <p style="color:#9ca3af;font-size:.85rem;margin-bottom:1.5rem" id="schedModalClient"></p>
+        <input type="hidden" id="schedBookingId">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div>
+                <label style="display:block;font-size:.75rem;color:#9ca3af;margin-bottom:.3rem">Date *</label>
+                <input type="date" id="schedDate" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:.5rem;padding:.5rem .75rem;font-size:.85rem;box-sizing:border-box">
+            </div>
+            <div>
+                <label style="display:block;font-size:.75rem;color:#9ca3af;margin-bottom:.3rem">Time *</label>
+                <input type="time" id="schedTime" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:.5rem;padding:.5rem .75rem;font-size:.85rem;box-sizing:border-box">
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div>
+                <label style="display:block;font-size:.75rem;color:#9ca3af;margin-bottom:.3rem">Duration</label>
+                <select id="schedDuration" style="width:100%;background:rgba(30,30,30,.95);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:.5rem;padding:.5rem .75rem;font-size:.85rem;box-sizing:border-box">
+                    <option value="30">30 min</option>
+                    <option value="45">45 min</option>
+                    <option value="60" selected>60 min</option>
+                    <option value="90">90 min</option>
+                    <option value="120">2 hours</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block;font-size:.75rem;color:#9ca3af;margin-bottom:.3rem">Location</label>
+                <input type="text" id="schedLocation" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:.5rem;padding:.5rem .75rem;font-size:.85rem;box-sizing:border-box" placeholder="Gym Floor" value="Gym Floor">
+            </div>
+        </div>
+        <div style="margin-bottom:1.25rem">
+            <label style="display:block;font-size:.75rem;color:#9ca3af;margin-bottom:.3rem">Notes (optional)</label>
+            <textarea id="schedNotes" rows="2" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:.5rem;padding:.5rem .75rem;font-size:.85rem;resize:vertical;box-sizing:border-box" placeholder="e.g. Bring resistance bands…"></textarea>
+        </div>
+        <button onclick="saveSchedule()" id="saveSchedBtn" style="width:100%;padding:.85rem;font-weight:700;border-radius:.5rem;border:none;cursor:pointer;background:#00f3ff;color:#000;font-size:.95rem;transition:opacity .2s">
+            <i class="fa-solid fa-calendar-check" style="margin-right:.5rem"></i>CONFIRM SCHEDULE
+        </button>
+        <p id="schedError" style="display:none;color:#f87171;font-size:.8rem;margin-top:.75rem;text-align:center"></p>
+    </div>
+</div>
+
+</body>
+</html>
