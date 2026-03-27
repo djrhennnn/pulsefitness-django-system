@@ -6,7 +6,9 @@ SECRET_KEY = 'django-insecure-!m9=q8np472ht$jz2y2y$+4@i80*z_+1-1g6mi%v+5)t-_&%aa
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['pulsefitness.onrender.com',
+    'pulsesystems.tech',
+    'www.pulsesystems.tech',]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
