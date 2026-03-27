@@ -84,7 +84,6 @@
             </button>
             <button onclick="showSection('messages')" id="snav-messages" class="sidebar-link w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
                 <i class="fa-solid fa-comments w-4"></i>Messages
-                <span class="ml-auto text-xs text-gray-500">{{ conversations.count }}</span>
             </button>
         </nav>
         <div class="pt-4 border-t border-white/10">
@@ -267,19 +266,15 @@
             </div>
         </div>
 
-        <!-- ── BOOKINGS (read-only monitor) ── -->
+        <!-- ── BOOKINGS ── -->
         <div id="section-bookings" class="admin-section hidden">
             <div class="flex justify-between items-center mb-5 flex-wrap gap-3">
-                <div>
-                    <h1 class="font-display text-2xl font-bold">All Bookings</h1>
-                    <p class="text-xs text-gray-500 mt-0.5"><i class="fa-solid fa-eye mr-1"></i>Monitor only — only trainers can accept or cancel bookings</p>
-                </div>
+                <h1 class="font-display text-2xl font-bold">All Bookings</h1>
                 <div class="flex gap-2 flex-wrap">
                     <button onclick="filterAdminBookings('all')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold active-filter" style="background:#00f3ff;color:#000" data-f="all">All ({{ total_bookings }})</button>
                     <button onclick="filterAdminBookings('pending')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="pending">Pending ({{ pending_count }})</button>
                     <button onclick="filterAdminBookings('confirmed')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="confirmed">Confirmed ({{ confirmed_count }})</button>
                     <button onclick="filterAdminBookings('cancelled')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="cancelled">Cancelled ({{ cancelled_count }})</button>
-                    <button onclick="filterAdminBookings('expired')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="expired">Expired ({{ expired_count }})</button>
                 </div>
             </div>
 
@@ -296,14 +291,19 @@
                             </div>
                             <div class="text-xs text-gray-500">
                                 {{ b.member.email }} &nbsp;·&nbsp; {{ b.requested_at|date:"M d, Y · g:i A" }}
-                                {% if b.expires_at %}&nbsp;·&nbsp; Expires: {{ b.expires_at|date:"M d, Y g:i A" }}{% endif %}
                             </div>
                             {% if b.notes %}<p class="text-gray-500 text-xs mt-1 italic">"{{ b.notes }}"</p>{% endif %}
                         </div>
-                        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                            <span class="status-badge-{{ b.status }} text-xs px-2.5 py-1 rounded-full font-bold">{{ b.status|upper }}</span>
-                            <a href="{% url 'chat' b.id %}" class="px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1" style="background:rgba(0,243,255,.15);color:#00f3ff;border:1px solid rgba(0,243,255,.3)">
-                                <i class="fa-solid fa-eye text-xs"></i> View Chat
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-xs px-2.5 py-1 rounded-full font-bold
+                                {% if b.status == 'confirmed' %}text-green-400" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3)
+                                {% elif b.status == 'cancelled' or b.status == 'expired' %}text-red-400" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3)
+                                {% elif b.status == 'completed' %}text-yellow-400" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3)
+                                {% else %}text-yellow-400" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3){% endif %}">
+                                {{ b.status|upper }}
+                            </span>
+                            <a href="{% url 'chat' b.id %}" class="px-3 py-1 rounded-lg text-xs font-bold hover:opacity-80" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)">
+                                <i class="fa-solid fa-eye mr-1"></i>View Chat
                             </a>
                         </div>
                     </div>
@@ -320,44 +320,59 @@
 
         <!-- ── MESSAGES MONITOR ── -->
         <div id="section-messages" class="admin-section hidden">
-            <div class="mb-6">
-                <h1 class="font-display text-2xl font-bold">Messages <span class="text-gradient">Monitor</span></h1>
-                <p class="text-gray-500 text-sm mt-0.5">Read-only view of all conversations between clients and trainers</p>
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="font-display text-xl font-bold">MESSAGES <span class="text-gradient">MONITOR</span></h2>
+                    <p class="text-gray-500 text-sm mt-0.5">All conversations between clients and trainers</p>
+                </div>
+                <div>
+                    <input type="text" id="msgSearch" oninput="filterMessages(this.value)" placeholder="Search messages…"
+                        class="px-4 py-2 rounded-lg text-sm" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;width:220px">
+                </div>
             </div>
 
-            {% if conversations %}
-            <div class="space-y-3">
-                {% for convo in conversations %}
-                <div class="glass-card p-4 rounded-xl">
-                    <div class="flex items-center justify-between gap-4 flex-wrap">
-                        <div class="flex items-center gap-4 min-w-0">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-black flex-shrink-0 text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">
-                                {{ convo.member.first_name|first|upper }}{{ convo.trainer.name|first|upper }}
+            {% if all_messages %}
+            <div class="space-y-3" id="msgList">
+                {% for msg in all_messages %}
+                <div class="glass-card p-4 rounded-xl msg-row">
+                    <div class="flex items-start gap-3">
+                        <!-- Sender avatar -->
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-black text-xs flex-shrink-0" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">
+                            {{ msg.sender.first_name|first|upper }}{{ msg.sender.last_name|first|upper }}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-1">
+                                <span class="font-bold text-sm">{{ msg.sender.get_full_name|default:msg.sender.username }}</span>
+                                <span class="text-xs text-gray-500">→</span>
+                                <span class="text-xs" style="color:#00f3ff">
+                                    {% if msg.sender == msg.booking.member %}
+                                        Trainer {{ msg.booking.trainer.name }}
+                                    {% else %}
+                                        Client {{ msg.booking.member.get_full_name|default:msg.booking.member.username }}
+                                    {% endif %}
+                                </span>
+                                <span class="text-xs text-gray-600">·</span>
+                                <span class="text-xs text-gray-500">{{ msg.sent_at|date:"M d, Y · g:i A" }}</span>
+                                {% if not msg.is_read %}
+                                <span class="text-xs px-1.5 py-0.5 rounded font-bold" style="background:rgba(239,68,68,.2);color:#f87171">UNREAD</span>
+                                {% endif %}
                             </div>
-                            <div class="min-w-0">
-                                <div class="font-bold text-sm flex items-center gap-2 flex-wrap">
-                                    <span>{{ convo.member.get_full_name|default:convo.member.username }}</span>
-                                    <i class="fa-solid fa-comments text-gray-500 text-xs"></i>
-                                    <span style="color:#00f3ff">{{ convo.trainer.name }}</span>
-                                </div>
-                                <div class="text-xs text-gray-500 mt-0.5">
-                                    {{ convo.messages.count }} message{{ convo.messages.count|pluralize }}
-                                    &nbsp;·&nbsp;
-                                    <span class="{% if convo.status == 'confirmed' %}text-green-400{% elif convo.status == 'expired' or convo.status == 'cancelled' %}text-red-400{% else %}text-yellow-400{% endif %}">{{ convo.status|upper }}</span>
-                                </div>
+                            <p class="text-sm text-gray-300 break-words">{{ msg.body }}</p>
+                            <div class="mt-1.5 flex items-center gap-2">
+                                <span class="text-xs text-gray-600">Booking #{{ msg.booking.id }}</span>
+                                <a href="{% url 'chat' msg.booking.id %}" class="text-xs font-bold hover:underline" style="color:#b026ff">
+                                    <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>Open Chat
+                                </a>
                             </div>
                         </div>
-                        <a href="{% url 'chat' convo.id %}" class="px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 flex-shrink-0" style="background:rgba(0,243,255,.15);color:#00f3ff;border:1px solid rgba(0,243,255,.3)">
-                            <i class="fa-solid fa-eye"></i> Monitor Chat
-                        </a>
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
             <div class="text-center py-16 text-gray-500">
-                <i class="fa-solid fa-comments text-5xl mb-4 block opacity-30"></i>
-                <p>No conversations yet.</p>
+                <i class="fa-solid fa-comments text-5xl mb-4 block"></i>
+                <p>No messages yet.</p>
             </div>
             {% endif %}
         </div>
@@ -384,25 +399,28 @@ function toggleSidebar() {
     sb.classList.toggle('flex');
 }
 
-// ── Chart ─────────────────────────────────────────────────
+// ── Chart (uses proper server-side counted vars) ──────────
 document.addEventListener('DOMContentLoaded', () => {
     const ctx = document.getElementById('bookingChart');
     if (!ctx) return;
     new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Pending', 'Confirmed', 'Cancelled', 'Expired'],
+            labels: ['Pending', 'Confirmed', 'Cancelled'],
             datasets: [{
-                data: [{{ pending_count }}, {{ confirmed_count }}, {{ cancelled_count }}, {{ expired_count }}],
-                backgroundColor: ['rgba(251,191,36,.75)','rgba(34,197,94,.75)','rgba(239,68,68,.75)','rgba(107,114,128,.75)'],
-                borderColor:     ['#fbbf24','#22c55e','#ef4444','#6b7280'],
+                data: [{{ pending_count }}, {{ confirmed_count }}, {{ cancelled_count }}],
+                backgroundColor: ['rgba(251,191,36,.75)','rgba(34,197,94,.75)','rgba(239,68,68,.75)'],
+                borderColor:     ['#fbbf24','#22c55e','#ef4444'],
                 borderWidth: 2,
                 hoverOffset: 8
             }]
         },
         options: {
-            responsive: true, cutout: '60%',
-            plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 16, font: { size: 12 } } } }
+            responsive: true,
+            cutout: '60%',
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 16, font: { size: 12 } } }
+            }
         }
     });
 });
@@ -424,6 +442,37 @@ function filterAdminBookings(status) {
         const isActive = b.dataset.f === status;
         b.style.background = isActive ? '#00f3ff' : 'rgba(255,255,255,0.1)';
         b.style.color = isActive ? '#000' : '#fff';
+    });
+}
+
+// ── Booking status update ─────────────────────────────────
+function adminUpdateStatus(id, status) {
+    const label = {confirmed:'confirm', cancelled:'cancel', pending:'restore'}[status];
+    if (!confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} this booking?`)) return;
+
+    const fd = new FormData();
+    fd.append('booking_id', id);
+    fd.append('status', status);
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch('{% url "update_booking_status" %}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                showToast(`Booking ${d.status}!`, 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showToast('Failed to update.', 'error');
+            }
+        })
+        .catch(() => showToast('Network error.', 'error'));
+}
+
+// ── Filter messages ──────────────────────────────────────
+function filterMessages(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('.msg-row').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
 }
 

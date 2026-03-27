@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PulseFitness | The Future of Fitness</title>
-    <script src="https://cdn.tailwindcss.com" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <script>
@@ -50,106 +50,11 @@
         .rating-star-filled{color:#fbbf24}
         .rating-star-empty{color:#4b5563}
         .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center}
-
-        /* ── MOBILE RESPONSIVE FIXES ── */
-        /* Landing nav mobile */
-        @media(max-width:640px){
-            /* Hero headline */
-            .hero-headline{font-size:2.8rem !important;line-height:1.1}
-            /* Nav */
-            nav .container{padding-left:1rem;padding-right:1rem}
-            /* Hero layout */
-            .hero-grid{grid-template-columns:1fr !important}
-            /* Programs grid */
-            .programs-grid{grid-template-columns:1fr !important;gap:1.5rem !important}
-            /* Programs middle card no offset */
-            .programs-grid .md\:-translate-y-4{transform:none !important}
-            /* Trainer cards min-width smaller on very small screens */
-            .trainer-card{min-width:260px !important}
-            /* Auth modal padding */
-            #authModal .absolute{padding:0 0.75rem}
-            #authModal .glass-card{padding:1.5rem !important}
-            /* Flash messages full width on mobile */
-            [style*="top:72px"]{width:calc(100% - 2rem) !important;right:1rem !important}
-            /* Book modal */
-            #bookModal .glass-card{margin:0.5rem auto}
-            #bookModal #bookStep1,#bookModal #bookStep2{padding:1.25rem !important}
-            /* Dashboard header */
-            .dashboard-header h1{font-size:1.25rem !important}
-            /* Overview stat grid */
-            .overview-stats{grid-template-columns:1fr 1fr !important}
-            /* Quick actions grid */
-            .quick-actions{grid-template-columns:1fr !important}
-            /* Booking list action buttons wrap */
-            .booking-actions{flex-wrap:wrap;gap:0.5rem}
-            /* Trainers section in dashboard */
-            .trainer-dash-card{width:100% !important;min-width:unset !important}
-            /* BMI gauge scale */
-            .bmi-gauge{width:160px !important}
-            .bmi-gauge-bg{width:160px !important;height:80px !important;border-radius:80px 80px 0 0 !important}
-            .bmi-needle{height:70px !important}
-            /* Profile form grid */
-            .profile-form-grid{grid-template-columns:1fr !important}
-            /* Workout generator grid */
-            .workout-gen-grid{grid-template-columns:1fr !important}
-            /* Rate modal */
-            #rateTrainerModal .glass-card{margin:0 0.75rem;padding:1.5rem !important}
-            /* Toast bottom position */
-        }
-
-        /* Tablet (641–768px) fixes */
-        @media(min-width:641px) and (max-width:768px){
-            .hero-headline{font-size:3.5rem !important}
-            .programs-grid{grid-template-columns:1fr 1fr !important}
-            .programs-grid .md\:-translate-y-4{transform:none !important}
-        }
-
-        /* Mobile sidebar overlay close backdrop */
-        #mobileSidebarBackdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:49;backdrop-filter:blur(2px)}
-        #mobileSidebarBackdrop.active{display:block}
-
-        /* Sticky bottom nav for mobile dashboard */
-        @media(max-width:767px){
-            #mobileDashNav{display:flex}
-            /* Ensure main content doesn't hide behind bottom nav */
-            .dashboard-main-content{padding-bottom:5rem !important}
-        }
-        @media(min-width:768px){
-            #mobileDashNav{display:none}
-        }
-
-        /* Smooth sidebar slide-in on mobile */
-        #sidebar{transition:transform 0.25s ease}
-
-        /* Trainer cards in dashboard: scrollable row on mobile */
-        @media(max-width:640px){
-            #section-trainers .trainer-list-grid{
-                display:flex !important;
-                flex-direction:column !important;
-                gap:1rem !important;
-            }
-            #section-trainers .trainer-list-grid > *{
-                width:100% !important;
-            }
-        }
-
-        /* Booking cards on mobile: stack actions below info */
-        @media(max-width:640px){
-            .booking-card-inner{flex-direction:column !important}
-            .booking-card-actions{width:100%;justify-content:flex-start !important;flex-wrap:wrap}
-        }
-
-        /* Landing hero buttons stacked on small mobile */
-        @media(max-width:400px){
-            .hero-buttons{flex-direction:column !important}
-            .hero-buttons > *{width:100%;text-align:center;justify-content:center}
-        }
+        .notif-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#ef4444;border:2px solid #0a0a0a;animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
     </style>
 </head>
 <body class="antialiased">
-
-<!-- Mobile sidebar backdrop -->
-<div id="mobileSidebarBackdrop" onclick="closeMobileSidebar()"></div>
 
 <!-- Loader — only on landing page, not dashboard -->
 {% if not user.is_authenticated %}
@@ -283,6 +188,7 @@
             <div class="hidden md:flex items-center gap-8 font-medium text-sm tracking-wide">
                 <a href="#programs" class="hover:text-cyan-400 transition-colors">PROGRAMS</a>
                 <a href="#trainers" class="hover:text-cyan-400 transition-colors">ELITE TEAM</a>
+                <a href="#reviews" class="hover:text-cyan-400 transition-colors">REVIEWS</a>
             </div>
             <div class="flex items-center gap-3">
                 <button onclick="openAuthModal('login')" class="hidden md:block px-5 py-2 rounded-full font-bold text-sm border transition-all" style="border-color:#00f3ff;color:#00f3ff;" onmouseover="this.style.background='#00f3ff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#00f3ff'">LOGIN</button>
@@ -294,23 +200,23 @@
     <!-- Hero -->
     <header class="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
         <div class="absolute inset-0 z-0">
-            <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop" class="w-full h-full object-cover opacity-40" alt="Gym" loading="lazy">
+            <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop" class="w-full h-full object-cover opacity-40" alt="Gym">
             <div class="absolute inset-0" style="background:linear-gradient(to bottom,rgba(0,0,0,.8),rgba(0,0,0,.4),#050505)"></div>
         </div>
-        <div class="container mx-auto px-6 relative z-10 grid md:grid-cols-2 gap-12 items-center hero-grid">
+        <div class="container mx-auto px-6 relative z-10 grid md:grid-cols-2 gap-12 items-center">
             <div class="space-y-6">
                 <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono" style="border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#00f3ff">
                     <span class="w-2 h-2 rounded-full animate-pulse" style="background:#00f3ff"></span>
                     SYSTEM ONLINE · ACCEPTING NEW MEMBERS
                 </div>
-                <h1 class="font-display text-5xl md:text-7xl font-black leading-tight hero-headline">
+                <h1 class="font-display text-5xl md:text-7xl font-black leading-tight">
                     REDEFINE <br>
                     <span class="text-transparent bg-clip-text" style="background-image:linear-gradient(to right,#00f3ff,#b026ff);-webkit-background-clip:text;">YOUR LIMITS</span>
                 </h1>
                 <p class="text-gray-400 text-lg max-w-lg leading-relaxed" style="border-left:2px solid #00f3ff;padding-left:1rem">
                     State-of-the-art equipment, expert trainers, and a community built for champions.
                 </p>
-                <div class="flex flex-wrap gap-4 pt-2 hero-buttons">
+                <div class="flex flex-wrap gap-4 pt-2">
                     <button onclick="openAuthModal('register')" class="px-8 py-4 bg-white text-black font-bold hover:bg-cyan-400 transition-colors">START TRANSFORMATION</button>
                     <a href="#programs" class="px-8 py-4 font-bold flex items-center gap-2 border transition-all" style="border-color:rgba(255,255,255,.2)" onmouseover="this.style.borderColor='#00f3ff';this.style.color='#00f3ff'" onmouseout="this.style.borderColor='rgba(255,255,255,.2)';this.style.color='#fff'">
                         <i class="fa-solid fa-play text-sm"></i> VIEW PROGRAMS
@@ -332,7 +238,7 @@
                 <span class="font-mono text-sm tracking-widest uppercase block mb-2" style="color:#00f3ff">Curated Pathways</span>
                 <h2 class="font-display text-4xl md:text-5xl font-bold">CHOOSE YOUR <span class="text-gradient">PROTOCOL</span></h2>
             </div>
-            <div class="grid md:grid-cols-3 gap-8 programs-grid">
+            <div class="grid md:grid-cols-3 gap-8">
                 <div class="glass-card p-8 rounded-2xl relative group hover:border-cyan-400/50 transition-all duration-300" style="border:1px solid rgba(255,255,255,.1)">
                     <span class="absolute -top-3 -right-3 px-3 py-1 rounded font-bold text-xs" style="background:#00f3ff;color:#000">POPULAR</span>
                     <div class="text-4xl mb-4">🔥</div>
@@ -454,6 +360,66 @@
             {% endfor %}
         </div>
     </section>
+
+    <!-- ── Client Reviews Section ── -->
+    <section id="reviews" class="py-24" style="background:linear-gradient(180deg,rgba(10,10,20,.9) 0%,rgba(5,5,5,1) 100%)">
+        <div class="container mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <span class="font-mono text-sm tracking-widest uppercase block mb-2" style="color:#b026ff">Community Voice</span>
+                <h2 class="font-display text-4xl md:text-5xl font-bold">WHAT MEMBERS <span class="text-gradient">SAY</span></h2>
+                {% if avg_site_rating %}
+                <div class="flex items-center justify-center gap-3 mt-4">
+                    <div class="flex gap-1">
+                        {% for i in "12345" %}
+                        <span class="text-2xl" style="color:{% if avg_site_rating and forloop.counter <= avg_site_rating %}#fbbf24{% else %}#374151{% endif %}">★</span>
+                        {% endfor %}
+                    </div>
+                    <span class="font-bold text-2xl text-yellow-400">{{ avg_site_rating }}</span>
+                    <span class="text-gray-400 text-sm">/ 5.0</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Review cards carousel -->
+            {% if site_reviews %}
+            <div class="grid md:grid-cols-3 gap-6 mb-12">
+                {% for review in site_reviews %}
+                <div class="glass-card rounded-2xl p-6 flex flex-col gap-4" style="border:1px solid rgba(176,38,255,.15)">
+                    <div class="flex gap-0.5">
+                        {% for i in "12345" %}
+                        <span style="color:{% if review.stars >= forloop.counter %}#fbbf24{% else %}#374151{% endif %}">★</span>
+                        {% endfor %}
+                    </div>
+                    {% if review.comment %}
+                    <p class="text-gray-300 text-sm leading-relaxed italic">"{{ review.comment|truncatechars:160 }}"</p>
+                    {% endif %}
+                    <div class="flex items-center gap-3 mt-auto pt-3 border-t border-white/8">
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-black text-xs flex-shrink-0" style="background:linear-gradient(135deg,#b026ff,#00f3ff)">
+                            {{ review.user.first_name|first|upper }}{{ review.user.last_name|first|upper }}
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm">{{ review.user.get_full_name|default:review.user.username }}</div>
+                            <div class="text-gray-500 text-xs">{{ review.created_at|date:"M Y" }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center text-gray-500 py-10 mb-10">
+                <i class="fa-regular fa-star text-4xl block mb-3" style="color:#b026ff"></i>
+                <p>No reviews yet — join us and be the first to share!</p>
+            </div>
+            {% endif %}
+
+            <!-- CTA to review -->
+            <div class="text-center">
+                <button onclick="openAuthModal('register')" class="px-8 py-4 font-bold rounded-full transition-all text-sm" style="background:linear-gradient(135deg,#b026ff,#00f3ff);color:#000;box-shadow:0 0 30px rgba(176,38,255,.4)">
+                    <i class="fa-solid fa-star mr-2"></i>JOIN & LEAVE A REVIEW
+                </button>
+            </div>
+        </div>
+    </section>
 </div>
 {% endif %}
 
@@ -484,12 +450,18 @@
                 </button>
                 <button onclick="showSection('myplans')" id="nav-myplans" class="dash-nav w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
                     <i class="fa-solid fa-clipboard-list w-4"></i> My Plans
-                    {% if workout_plans %}<span class="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold" style="background:#b026ff;color:#fff">{{ workout_plans.count }}</span>{% endif %}
+                    {% if workout_plans %}<span class="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold" style="background:#b026ff;color:#fff">{{ workout_plans|length }}</span>{% endif %}
                 </button>
-                <!-- Messages link with unread badge -->
-                <button onclick="showSection('bookings')" id="nav-bookings" class="dash-nav w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
-                    <i class="fa-solid fa-message w-4"></i> Messages
-                    {% if unread_count > 0 %}<span class="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold animate-pulse" style="background:#ef4444;color:#fff">{{ unread_count }}</span>{% endif %}
+                <button onclick="showSection('messages')" id="nav-messages" class="dash-nav w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                    <span class="relative flex-shrink-0" style="width:1rem">
+                        <i class="fa-solid fa-message w-4"></i>
+                        <span id="sidebarMsgBadge" class="notif-dot hidden"></span>
+                    </span>
+                    Messages
+                    <span id="sidebarMsgCount" class="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold hidden" style="background:#ef4444;color:#fff"></span>
+                </button>
+                <button onclick="showSection('feed')" id="nav-feed" class="dash-nav w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                    <i class="fa-solid fa-fire w-4"></i> Progress Feed
                 </button>
                 <button onclick="showSection('profile')" id="nav-profile" class="dash-nav w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
                     <i class="fa-solid fa-user w-4"></i> Profile
@@ -510,15 +482,7 @@
         <!-- Mobile top bar -->
         <div class="md:hidden fixed top-0 left-0 right-0 z-40 px-4 py-3 flex justify-between items-center border-b border-white/10" style="background:rgba(18,18,18,.97)">
             <span class="font-display font-bold text-sm">PULSE<span style="color:#00f3ff">FITNESS</span></span>
-            <div class="flex items-center gap-3">
-                {% if unread_count > 0 %}
-                <button onclick="showSection('bookings');setActiveMobileNav(document.querySelector('[onclick*=bookings]'))" class="relative">
-                    <i class="fa-solid fa-message text-gray-400"></i>
-                    <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full text-xs font-bold flex items-center justify-center" style="background:#ef4444;color:#fff;font-size:9px">{{ unread_count }}</span>
-                </button>
-                {% endif %}
-                <button onclick="toggleMobileSidebar()" class="text-white p-1"><i class="fa-solid fa-bars"></i></button>
-            </div>
+            <button onclick="toggleMobileSidebar()" class="text-white p-1"><i class="fa-solid fa-bars"></i></button>
         </div>
 
         <!-- Main content -->
@@ -562,7 +526,7 @@
 
             <!-- ── OVERVIEW ── -->
             <div id="section-overview" class="dash-section">
-                <div class="grid sm:grid-cols-3 gap-5 mb-6 overview-stats">
+                <div class="grid sm:grid-cols-3 gap-5 mb-6">
                     <div class="glass-card p-5 rounded-2xl">
                         <div class="flex justify-between items-start mb-3">
                             <span class="text-gray-400 text-xs uppercase tracking-wider">Current BMI</span>
@@ -590,7 +554,7 @@
                 </div>
                 <div class="glass-card p-6 rounded-2xl">
                     <h3 class="font-display text-lg font-bold mb-4">Quick Actions</h3>
-                    <div class="grid sm:grid-cols-2 gap-4 quick-actions">
+                    <div class="grid sm:grid-cols-2 gap-4">
                         <button onclick="showSection('bmi')" class="p-4 rounded-xl hover:bg-white/10 transition-colors text-left flex items-center gap-4" style="background:rgba(255,255,255,.05)">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(0,243,255,.2);color:#00f3ff"><i class="fa-solid fa-calculator"></i></div>
                             <div><div class="font-bold text-sm">Calculate BMI</div><div class="text-xs text-gray-400">Check your body metrics</div></div>
@@ -747,22 +711,23 @@
                                         Sessions: {{ b.sessions_done }}/{{ b.total_sessions }} done · {{ b.sessions_remaining }} remaining
                                     </div>
                                     {% endif %}
-                                    {% if b.scheduled_sessions.exists %}
-                                    <div class="mt-2 space-y-1">
-                                        {% for s in b.scheduled_sessions.all %}
+                                    {% for s in b.scheduled_sessions.all %}
+                                    {% if forloop.first %}<div class="mt-2 space-y-1">{% endif %}
                                         <div class="flex items-center gap-1.5 text-xs" style="color:#9ca3af">
                                             <i class="fa-solid fa-calendar-day text-xs" style="color:#b026ff"></i>
                                             <span>{{ s.session_date|date:"M d, Y" }} at {{ s.session_time|time:"g:i A" }}</span>
                                             {% if s.location and s.location != 'TBD' %}<span class="text-gray-600">· {{ s.location }}</span>{% endif %}
                                         </div>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
+                                    {% if forloop.last %}</div>{% endif %}
+                                    {% endfor %}
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
                                 <span class="text-xs font-bold px-3 py-1 rounded-full
-                                    {% if b.status == 'confirmed' %}text-green-400{% elif b.status == 'cancelled' %}text-red-400{% elif b.status == 'completed' %}text-yellow-400{% else %}text-yellow-400{% endif %}"
+                                    {% if b.status == 'confirmed' %}text-green-400
+                                    {% elif b.status == 'cancelled' or b.status == 'expired' %}text-red-400
+                                    {% elif b.status == 'completed' %}text-yellow-400
+                                    {% else %}text-yellow-400{% endif %}"
                                     style="background:rgba(255,255,255,.07)">
                                     {{ b.status|upper }}
                                 </span>
@@ -774,7 +739,7 @@
                                     Cancel
                                 </button>
                                 {% endif %}
-                                {% if b.status == 'completed' or b.status == 'cancelled' %}
+                                {% if b.status == 'completed' or b.status == 'cancelled' or b.status == 'expired' %}
                                     {% if not b.trainer_rating %}
                                     <button onclick="openRateModal({{ b.id }}, '{{ b.trainer.name|escapejs }}')" class="px-3 py-1.5 rounded-lg font-bold text-xs" style="background:rgba(251,191,36,.2);color:#fbbf24;border:1px solid rgba(251,191,36,.4)">
                                         <i class="fa-solid fa-star mr-1"></i>Rate
@@ -843,49 +808,6 @@
                 </div>
             </div>
 
-            <!-- ── MESSAGES / BOOKINGS ── -->
-            <div id="section-bookings" class="dash-section hidden">
-                <h2 class="font-display text-2xl font-bold mb-6">MY <span style="color:#00f3ff">MESSAGES</span></h2>
-                {% if bookings %}
-                <div class="space-y-4">
-                    {% for b in bookings %}
-                    <div class="glass-card p-5 rounded-2xl">
-                        <div class="flex items-center justify-between gap-4 flex-wrap">
-                            <div class="flex items-center gap-4">
-                                {% if b.trainer.photo %}
-                                <img src="{{ b.trainer.photo.url }}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="{{ b.trainer.name }}">
-                                {% else %}
-                                <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-black flex-shrink-0" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">{{ b.trainer.name|first|upper }}</div>
-                                {% endif %}
-                                <div>
-                                    <div class="font-bold">{{ b.trainer.name }}</div>
-                                    <div class="text-xs text-gray-400 mt-0.5">{{ b.trainer.get_specialty_display }}</div>
-                                    <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                        <span class="text-xs font-bold px-2 py-0.5 rounded-full
-                                            {% if b.status == 'confirmed' %}text-green-400{% elif b.status == 'cancelled' or b.status == 'expired' %}text-red-400{% elif b.status == 'completed' %}text-yellow-400{% else %}text-yellow-300{% endif %}"
-                                            style="background:rgba(255,255,255,.07)">{{ b.status|upper }}</span>
-                                        {% if b.status == 'expired' %}
-                                        <span class="text-xs text-red-400"><i class="fa-solid fa-clock mr-1"></i>Booking expired</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <a href="{% url 'chat' b.id %}" class="px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 relative" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)">
-                                <i class="fa-solid fa-message"></i> Open Chat
-                                <!-- Per-booking unread indicator -->
-                            </a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-16 text-gray-500">
-                    <i class="fa-solid fa-message text-5xl mb-4 block opacity-30"></i>
-                    <p>No bookings yet. Book a trainer to start chatting!</p>
-                </div>
-                {% endif %}
-            </div>
-
             <!-- ── MY TRAINER PLANS ── -->
             <div id="section-myplans" class="dash-section hidden">
                 <h2 class="font-display text-2xl font-bold mb-6">MY WORKOUT <span style="color:#b026ff">PLANS</span></h2>
@@ -928,11 +850,113 @@
                 {% endif %}
             </div>
 
+            <!-- ── MESSAGES ── -->
+            <div id="section-messages" class="dash-section hidden">
+                <h2 class="font-display text-2xl font-bold mb-6">MESSAGES <span style="color:#b026ff">& CHATS</span></h2>
+                {% if bookings %}
+                <div class="space-y-3">
+                    {% for b in bookings %}
+                    <a href="{% url 'chat' b.id %}" class="glass-card p-4 rounded-xl flex items-center gap-4 hover:border-purple-500/40 transition-all block" style="text-decoration:none">
+                        <div class="relative flex-shrink-0">
+                            {% if b.trainer.photo %}
+                            <img src="{{ b.trainer.photo.url }}" class="w-11 h-11 rounded-full object-cover object-top border-2" style="border-color:rgba(176,38,255,.5)" alt="">
+                            {% else %}
+                            <img src="{% static b.trainer.static_photo_key %}" class="w-11 h-11 rounded-full object-cover object-top border-2" style="border-color:rgba(176,38,255,.5)" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                            <div class="w-11 h-11 rounded-full items-center justify-center font-bold text-black text-sm flex-shrink-0" style="background:linear-gradient(135deg,#00f3ff,#b026ff);display:none">{{ b.trainer.name|first|upper }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-sm">{{ b.trainer.name }}</span>
+                                <span class="text-gray-500 text-xs">· {{ b.trainer.get_specialty_display }}</span>
+                            </div>
+                            <div class="text-gray-400 text-xs mt-0.5">
+                                {% if b.messages.exists %}
+                                {% with last=b.messages.last %}
+                                {{ last.sender.first_name }}: {{ last.body|truncatechars:50 }}
+                                {% endwith %}
+                                {% else %}
+                                <span class="text-gray-600">No messages yet — start the conversation</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                            <span class="text-xs px-2 py-0.5 rounded-full font-bold
+                                {% if b.status == 'confirmed' %}text-green-400
+                                {% elif b.status == 'cancelled' or b.status == 'expired' %}text-red-400
+                                {% elif b.status == 'completed' %}text-yellow-400
+                                {% else %}text-gray-400{% endif %}"
+                                style="background:rgba(255,255,255,.07)">{{ b.status|upper }}</span>
+                            <i class="fa-solid fa-chevron-right text-xs text-gray-600"></i>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-16 text-gray-500">
+                    <i class="fa-solid fa-comments text-5xl mb-4 block"></i>
+                    <p>No conversations yet. Book a trainer to start chatting!</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- ── PROGRESS FEED ── -->
+            <div id="section-feed" class="dash-section hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="font-display text-2xl font-bold">PROGRESS <span style="color:#00f3ff">FEED</span></h2>
+                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <span class="w-2 h-2 rounded-full animate-pulse" style="background:#00f3ff"></span>
+                        Live community feed
+                    </div>
+                </div>
+
+                <!-- Composer -->
+                <div class="glass-card rounded-2xl p-5 mb-6" style="border:1px solid rgba(0,243,255,.2);box-shadow:0 0 30px rgba(0,243,255,.05)">
+                    <div class="flex items-start gap-3">
+                        {% if profile.photo %}
+                        <img src="{{ profile.photo.url }}" class="w-11 h-11 rounded-full object-cover object-top flex-shrink-0 border-2" style="border-color:#00f3ff" alt="">
+                        {% else %}
+                        <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-black text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">
+                            {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                        </div>
+                        {% endif %}
+                        <div class="flex-1">
+                            <textarea id="feedCaption" rows="2" placeholder="Share your progress, a milestone, or motivation… 💪" class="w-full bg-transparent text-white placeholder-gray-500 text-sm resize-none outline-none border-b border-white/10 pb-2 mb-3"></textarea>
+                            <!-- Multi-image preview grid -->
+                            <div id="feedImagePreviewGrid" class="hidden mb-3 grid grid-cols-3 gap-2"></div>
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <label class="cursor-pointer flex items-center gap-2 text-xs font-bold transition-colors hover:text-white px-3 py-1.5 rounded-full" style="color:#00f3ff;background:rgba(0,243,255,.1);border:1px solid rgba(0,243,255,.2)">
+                                    <i class="fa-solid fa-images"></i> Photos
+                                    <input type="file" id="feedImageInput" accept="image/*" multiple class="hidden" onchange="previewFeedImages(this)">
+                                </label>
+                                <button onclick="clearFeedImages()" id="clearImagesBtn" class="hidden text-xs text-red-400 hover:text-red-300 transition-colors">
+                                    <i class="fa-solid fa-xmark mr-1"></i>Clear
+                                </button>
+                                <button onclick="submitFeedPost()" class="ml-auto px-6 py-2 rounded-full text-xs font-bold transition-all hover:opacity-90" style="background:linear-gradient(135deg,#00f3ff,#b026ff);color:#000;box-shadow:0 0 15px rgba(0,243,255,.3)">
+                                    <i class="fa-solid fa-paper-plane mr-1"></i> Post
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feed list -->
+                <div id="feedList" class="space-y-5">
+                    <div class="text-center text-gray-500 py-10 text-sm" id="feedEmpty">
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background:rgba(0,243,255,.05);border:1px solid rgba(0,243,255,.1)">
+                            <i class="fa-solid fa-fire text-2xl" style="color:#00f3ff"></i>
+                        </div>
+                        Loading feed…
+                    </div>
+                </div>
+            </div>
+
             <!-- ── PROFILE ── -->
             <div id="section-profile" class="dash-section hidden">
                 <h2 class="font-display text-2xl font-bold mb-6">YOUR <span style="color:#00f3ff">PROFILE</span></h2>
                 <div class="flex justify-center">
-                    <div class="glass-card p-6 rounded-2xl w-full max-w-xl">
+                    <div class="w-full max-w-xl space-y-6">
+                    <div class="glass-card p-6 rounded-2xl">
                         <div class="flex items-center gap-5 mb-6 pb-6 border-b border-white/10">
                             <div class="relative flex-shrink-0 cursor-pointer group" onclick="document.getElementById('photoInput').click()">
                                 {% if profile.photo %}
@@ -984,29 +1008,64 @@
                             <p id="profileErr" class="text-center text-red-400 text-sm mt-3 hidden">✗ Failed to save. Please try again.</p>
                         </form>
                     </div>
+
+                    <!-- ── Rate this website ── -->
+                    <div class="glass-card p-6 rounded-2xl" style="border:1px solid rgba(176,38,255,.2)">
+                        <h3 class="font-bold text-base mb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-star" style="color:#b026ff"></i> Rate PulseFitness
+                        </h3>
+                        <p class="text-gray-400 text-xs mb-4">Your review will appear on our landing page for new visitors.</p>
+                        <div class="flex gap-2 mb-3" id="siteStarRow">
+                            {% for i in "12345" %}
+                            <button onclick="setSiteStar({{ forloop.counter }})" data-star="{{ forloop.counter }}"
+                                class="site-star-btn text-2xl transition-all hover:scale-110"
+                                style="color:{% if my_site_review and my_site_review.stars >= forloop.counter %}#fbbf24{% else %}#4b5563{% endif %}">★</button>
+                            {% endfor %}
+                        </div>
+                        <textarea id="siteReviewComment" rows="2" placeholder="Tell us about your experience (optional)…"
+                            class="w-full bg-transparent text-white placeholder-gray-500 text-sm resize-none outline-none border-b border-white/10 pb-2 mb-3">{{ my_site_review.comment|default:'' }}</textarea>
+                        <input type="hidden" id="siteReviewStars" value="{{ my_site_review.stars|default:0 }}">
+                        <button onclick="submitSiteReview()" class="px-5 py-2 rounded-full text-xs font-bold transition-all" style="background:linear-gradient(135deg,#b026ff,#00f3ff);color:#000">
+                            {% if my_site_review %}Update Review{% else %}Submit Review{% endif %}
+                        </button>
+                    </div>
+
+                    <!-- ── My trainer ratings (from past trainers) ── -->
+                    {% if my_client_ratings %}
+                    <div class="glass-card p-6 rounded-2xl" style="border:1px solid rgba(255,193,7,.15)">
+                        <h3 class="font-bold text-base mb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-check" style="color:#fbbf24"></i> My Trainer Ratings
+                        </h3>
+                        <p class="text-gray-400 text-xs mb-4">Ratings given by your past trainers — visible to future trainers you book.</p>
+                        <div class="space-y-3">
+                            {% for cr in my_client_ratings %}
+                            <div class="rounded-xl p-4 flex gap-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="font-bold text-sm">{{ cr.trainer.name }}</span>
+                                        <div class="flex gap-0.5">
+                                            {% for i in "12345" %}
+                                            <span class="text-xs {% if cr.stars >= forloop.counter %}text-yellow-400{% else %}text-gray-600{% endif %}">★</span>
+                                            {% endfor %}
+                                        </div>
+                                        <span class="font-bold text-xs text-yellow-400">{{ cr.stars }}/5</span>
+                                    </div>
+                                    {% if cr.comment %}<p class="text-gray-400 text-xs">{{ cr.comment }}</p>{% endif %}
+                                    <p class="text-gray-600 text-xs mt-1">{{ cr.created_at|date:"M d, Y" }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    </div>
                 </div>
             </div>
 
         </main>
     </div>
 </div>
-
-<!-- Mobile Bottom Nav (dashboard only) -->
-{% if user.is_authenticated and not user.is_staff %}
-<nav id="mobileDashNav" class="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 hidden" style="background:rgba(12,12,12,.97);backdrop-filter:blur(12px)">
-    <div class="flex">
-        <button onclick="showSection('overview');setActiveMobileNav(this)"  class="mobile-nav-btn flex-1 py-2.5 text-xs font-bold flex flex-col items-center gap-1 active-mobile-nav" style="color:#00f3ff"><i class="fa-solid fa-chart-line text-base"></i><span>Overview</span></button>
-        <button onclick="showSection('trainers');setActiveMobileNav(this)"  class="mobile-nav-btn flex-1 py-2.5 text-xs font-bold flex flex-col items-center gap-1 text-gray-500"><i class="fa-solid fa-users text-base"></i><span>Trainers</span></button>
-        <button onclick="showSection('bookings');setActiveMobileNav(this)"  class="mobile-nav-btn flex-1 py-2.5 text-xs font-bold flex flex-col items-center gap-1 text-gray-500 relative">
-            <i class="fa-solid fa-message text-base"></i>
-            <span>Messages</span>
-            {% if unread_count > 0 %}<span class="absolute top-1 right-3 w-4 h-4 rounded-full text-xs font-bold flex items-center justify-center" style="background:#ef4444;color:#fff;font-size:9px">{{ unread_count }}</span>{% endif %}
-        </button>
-        <button onclick="showSection('workouts');setActiveMobileNav(this)"  class="mobile-nav-btn flex-1 py-2.5 text-xs font-bold flex flex-col items-center gap-1 text-gray-500"><i class="fa-solid fa-dumbbell text-base"></i><span>Workout</span></button>
-        <button onclick="showSection('profile');setActiveMobileNav(this)"   class="mobile-nav-btn flex-1 py-2.5 text-xs font-bold flex flex-col items-center gap-1 text-gray-500"><i class="fa-solid fa-user text-base"></i><span>Profile</span></button>
-    </div>
-</nav>
-{% endif %}
 
 <!-- Book Trainer Modal -->
 <div id="bookModal" class="modal-overlay hidden" style="align-items:flex-start;padding:1.5rem 1rem;overflow-y:auto">
@@ -1104,49 +1163,21 @@
 <!-- ═══════════════════════════ SCRIPTS ════════════════════════════ -->
 <script>
 // ── Loader — only runs on landing page ───────────────────
-function dismissLoader() {
-    const ldr = document.getElementById('loader');
-    if (!ldr || ldr.style.display === 'none') return;
-    const prog = document.getElementById('loader-progress');
-    const txt  = document.getElementById('loader-text');
-    if (prog) prog.style.width = '100%';
-    if (txt)  txt.textContent  = 'SYSTEM READY';
-    setTimeout(() => {
-        ldr.style.opacity = '0';
-        setTimeout(() => { ldr.style.display = 'none'; }, 500);
-    }, 300);
-}
-
-// Run the fake progress bar as soon as DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
     const ldr  = document.getElementById('loader');
-    if (!ldr) return;
+    if (!ldr) return;   // not on dashboard
     const prog = document.getElementById('loader-progress');
     const txt  = document.getElementById('loader-text');
     let w = 0;
     const iv = setInterval(() => {
-        w += Math.random() * 18;
-        if (w >= 100) {
-            w = 100;
-            clearInterval(iv);
-            if (txt) txt.textContent = 'SYSTEM READY';
-            if (prog) prog.style.width = '100%';
-            setTimeout(() => {
-                ldr.style.opacity = '0';
-                setTimeout(() => { ldr.style.display = 'none'; }, 500);
-            }, 300);
-            return;
-        }
-        if (prog) prog.style.width = w + '%';
-        if (txt) {
-            if (w > 40) txt.textContent = 'LOADING ASSETS...';
-            if (w > 75) txt.textContent = 'OPTIMIZING EXPERIENCE...';
-        }
+        w += Math.random() * 14;
+        if (w >= 100) { w = 100; clearInterval(iv); txt.textContent = 'SYSTEM READY'; }
+        prog.style.width = w + '%';
+        if (w > 40) txt.textContent = 'LOADING ASSETS...';
+        if (w > 75) txt.textContent = 'OPTIMIZING EXPERIENCE...';
+        if (w === 100) setTimeout(() => { ldr.style.opacity = '0'; setTimeout(() => ldr.style.display = 'none', 500); }, 300);
     }, 80);
 });
-
-// Hard fallback: force-dismiss after 2 seconds no matter what
-setTimeout(dismissLoader, 2000);
 
 // ── Spotlight cursor ─────────────────────────────────────
 const spotlight = document.getElementById('spotlight');
@@ -1178,57 +1209,21 @@ function showSection(name) {
         activeNav.style.color = '#00f3ff';
         activeNav.style.background = 'rgba(0,243,255,0.07)';
     }
+    if (name === 'feed') loadFeed();
 }
 
 // ── Mobile sidebar toggle ────────────────────────────────
 function toggleMobileSidebar() {
     const sb = document.getElementById('sidebar');
-    const backdrop = document.getElementById('mobileSidebarBackdrop');
     if (!sb) return;
-    const isOpen = sb.dataset.mobileOpen === '1';
-    if (isOpen) {
-        closeMobileSidebar();
+    if (sb.classList.contains('hidden') || !sb.classList.contains('md:flex')) {
+        sb.classList.remove('hidden');
+        sb.style.cssText = 'position:fixed;top:0;left:0;bottom:0;z-index:50;width:240px;padding:1.5rem;display:flex;flex-direction:column;background:rgba(18,18,18,.98);border-right:1px solid rgba(255,255,255,.1)';
     } else {
-        sb.dataset.mobileOpen = '1';
-        sb.style.cssText = 'position:fixed;top:0;left:0;bottom:0;z-index:50;width:260px;padding:1.5rem;display:flex;flex-direction:column;background:rgba(12,12,12,.99);border-right:1px solid rgba(255,255,255,.12);overflow-y:auto';
-        if (backdrop) backdrop.classList.add('active');
+        sb.style.cssText = '';
+        if (window.innerWidth < 768) sb.classList.add('hidden');
     }
 }
-
-function closeMobileSidebar() {
-    const sb = document.getElementById('sidebar');
-    const backdrop = document.getElementById('mobileSidebarBackdrop');
-    if (!sb) return;
-    sb.dataset.mobileOpen = '0';
-    sb.style.cssText = '';
-    if (window.innerWidth < 768) sb.classList.add('hidden');
-    if (backdrop) backdrop.classList.remove('active');
-}
-
-// ── Mobile bottom nav active state ───────────────────────
-function setActiveMobileNav(el) {
-    document.querySelectorAll('.mobile-nav-btn').forEach(b => {
-        b.style.color = '#6b7280';
-        b.classList.remove('active-mobile-nav');
-    });
-    el.style.color = '#00f3ff';
-    el.classList.add('active-mobile-nav');
-    // Close sidebar on mobile when a section is chosen
-    if (window.innerWidth < 768) closeMobileSidebar();
-}
-
-// ── Adjust main content padding for mobile bottom nav ────
-function adjustMainPadding() {
-    const main = document.querySelector('#dashboard main');
-    if (!main) return;
-    if (window.innerWidth < 768) {
-        main.style.paddingBottom = '5rem';
-    } else {
-        main.style.paddingBottom = '';
-    }
-}
-window.addEventListener('resize', adjustMainPadding);
-document.addEventListener('DOMContentLoaded', adjustMainPadding);
 
 // ── BMI Calculator ───────────────────────────────────────
 function calculateAndSaveBMI() {
@@ -1297,7 +1292,6 @@ function filterTrainers(type) {
 let _pickerYear, _pickerMonth;
 let _selectedDates = [];   // array of {date:"YYYY-MM-DD", time:"HH:MM"}
 let _needDates = 1;
-let _bookedSlots = {};     // { trainerId: [{date, time}, ...] }
 
 const MONTH_NAMES_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_NAMES_FULL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1307,9 +1301,6 @@ function _todayStr() {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// Pre-loaded booked slots from server
-const _serverBookedSlots = {{ trainer_booked_slots|safe }};
-
 function openBookModal(id, name) {
     document.getElementById('bookModalTrainerId').value = id;
     document.getElementById('bookModalTrainerName').textContent = 'Booking with ' + name;
@@ -1317,8 +1308,6 @@ function openBookModal(id, name) {
     document.getElementById('bookNotes').value = '';
     _selectedDates = [];
     _needDates = 1;
-    // Load booked slots for this trainer
-    _bookedSlots[id] = _serverBookedSlots[id] || [];
     document.getElementById('bookStep1').classList.remove('hidden');
     document.getElementById('bookStep2').classList.add('hidden');
     document.getElementById('bookModal').classList.remove('hidden');
@@ -1347,10 +1336,13 @@ function goToStep1() {
     document.getElementById('bookModal').scrollTop = 0;
 }
 
+let _blockedSlots = [];  // [{date, time, duration_min}] from server
+
 function goToStep2() {
     const sessions = parseInt(document.getElementById('bookSessions').value) || 1;
     _needDates = Math.min(20, Math.max(1, sessions));
     _selectedDates = [];
+    _blockedSlots = [];
 
     // Init picker to current month
     const now = new Date();
@@ -1363,10 +1355,19 @@ function goToStep2() {
     document.getElementById('selectedDatesList').innerHTML = '';
     document.getElementById('confirmBookBtn').disabled = true;
 
-    renderPickerCalendar();
-    document.getElementById('bookStep1').classList.add('hidden');
-    document.getElementById('bookStep2').classList.remove('hidden');
-    document.getElementById('bookModal').scrollTop = 0;
+    const trainerId = document.getElementById('bookModalTrainerId').value;
+
+    // Load booked slots for this trainer, then render
+    fetch(`/trainer/booked-slots/${trainerId}/`)
+        .then(r => r.json())
+        .then(d => { _blockedSlots = d.booked || []; })
+        .catch(() => { _blockedSlots = []; })
+        .finally(() => {
+            renderPickerCalendar();
+            document.getElementById('bookStep1').classList.add('hidden');
+            document.getElementById('bookStep2').classList.remove('hidden');
+            document.getElementById('bookModal').scrollTop = 0;
+        });
 }
 
 function pickerPrevMonth() {
@@ -1380,6 +1381,12 @@ function pickerNextMonth() {
     renderPickerCalendar();
 }
 
+function isDateFullyBooked(dateStr) {
+    // A date is "fully booked" if the trainer has sessions covering the whole day
+    // For simplicity: if ANY slot exists on that date
+    return _blockedSlots.some(s => s.date === dateStr);
+}
+
 function renderPickerCalendar() {
     document.getElementById('pickerMonthLabel').textContent =
         MONTH_NAMES_FULL[_pickerMonth] + ' ' + _pickerYear;
@@ -1387,17 +1394,11 @@ function renderPickerCalendar() {
     const grid = document.getElementById('pickerGrid');
     grid.innerHTML = '';
 
-    const trainerId    = document.getElementById('bookModalTrainerId').value;
-    const bookedSlots  = _bookedSlots[trainerId] || [];
-    const bookedDates  = bookedSlots.map(s => s.date); // dates that are occupied
-    const prefTime     = document.getElementById('bookPrefTime') ? document.getElementById('bookPrefTime').value || '08:00' : '08:00';
-
     const firstDay     = new Date(_pickerYear, _pickerMonth, 1).getDay();
     const daysInMonth  = new Date(_pickerYear, _pickerMonth + 1, 0).getDate();
     const todayStr     = _todayStr();
     const selectedKeys = _selectedDates.map(d => d.date);
 
-    // Blank leading cells
     for (let i = 0; i < firstDay; i++) {
         const b = document.createElement('div');
         b.style.height = '36px';
@@ -1409,33 +1410,40 @@ function renderPickerCalendar() {
         const isPast     = dateStr < todayStr;
         const isToday    = dateStr === todayStr;
         const isSelected = selectedKeys.includes(dateStr);
-        // Check if this exact date+time is already booked by this trainer
-        const isBooked   = bookedSlots.some(s => s.date === dateStr && s.time === prefTime);
-        const isBlocked  = isPast || isBooked;
+        const isBooked   = isDateFullyBooked(dateStr);
 
         const cell = document.createElement('div');
-        cell.style.cssText = 'height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:600;transition:all .15s ease;position:relative';
+        cell.style.height        = '36px';
+        cell.style.borderRadius  = '8px';
+        cell.style.display       = 'flex';
+        cell.style.flexDirection = 'column';
+        cell.style.alignItems    = 'center';
+        cell.style.justifyContent = 'center';
+        cell.style.fontSize      = '0.75rem';
+        cell.style.fontWeight    = '600';
+        cell.style.transition    = 'all .15s ease';
+        cell.style.position      = 'relative';
         cell.textContent = day;
 
-        if (isBooked && !isPast) {
-            // Occupied slot — show with X indicator, not clickable
-            cell.style.background = 'rgba(239,68,68,.12)';
-            cell.style.color      = '#6b7280';
-            cell.style.cursor     = 'not-allowed';
-            cell.style.border     = '1px solid rgba(239,68,68,.25)';
-            cell.title            = 'This slot is already booked';
-            // Small dot indicator
-            const dot = document.createElement('span');
-            dot.style.cssText = 'position:absolute;bottom:3px;width:4px;height:4px;border-radius:50%;background:#ef4444';
-            cell.appendChild(dot);
-        } else if (isPast) {
-            cell.style.color  = '#374151';
-            cell.style.cursor = 'not-allowed';
+        if (isPast || isBooked) {
+            cell.style.color   = '#374151';
+            cell.style.cursor  = 'not-allowed';
+            cell.style.background = isBooked ? 'rgba(239,68,68,.08)' : 'transparent';
+            cell.style.border  = isBooked ? '1px solid rgba(239,68,68,.2)' : 'none';
+            if (isBooked) {
+                // Add small "X" indicator
+                const x = document.createElement('span');
+                x.textContent = '✕';
+                x.style.cssText = 'position:absolute;bottom:1px;font-size:0.5rem;color:#ef4444;opacity:0.7';
+                cell.appendChild(x);
+                cell.title = 'Trainer is already booked on this date';
+            }
         } else if (isSelected) {
             cell.style.background = '#b026ff';
             cell.style.color      = '#fff';
             cell.style.cursor     = 'pointer';
             cell.style.boxShadow  = '0 0 10px rgba(176,38,255,.5)';
+            cell.onclick = () => toggleDate(dateStr);
         } else {
             cell.style.background = isToday ? 'rgba(0,243,255,.15)' : 'rgba(255,255,255,.06)';
             cell.style.color      = isToday ? '#00f3ff' : '#fff';
@@ -1443,27 +1451,11 @@ function renderPickerCalendar() {
             cell.style.border     = isToday ? '1px solid rgba(0,243,255,.4)' : '1px solid rgba(255,255,255,.07)';
             cell.onmouseover = () => { cell.style.background = 'rgba(176,38,255,.25)'; };
             cell.onmouseout  = () => { cell.style.background = isToday ? 'rgba(0,243,255,.15)' : 'rgba(255,255,255,.06)'; };
-        }
-
-        if (!isBlocked) {
             cell.onclick = () => toggleDate(dateStr);
         }
+
         grid.appendChild(cell);
     }
-
-    // Show legend if there are any booked slots this month
-    const hasBookedThisMonth = bookedSlots.some(s => s.date.startsWith(`${_pickerYear}-${String(_pickerMonth+1).padStart(2,'0')}`));
-    let legend = document.getElementById('calLegend');
-    if (!legend) {
-        legend = document.createElement('div');
-        legend.id = 'calLegend';
-        legend.className = 'mt-3 flex items-center gap-4 text-xs text-gray-500';
-        grid.parentElement.appendChild(legend);
-    }
-    legend.innerHTML = hasBookedThisMonth
-        ? `<span class="flex items-center gap-1"><span style="width:10px;height:10px;border-radius:2px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);display:inline-block"></span> Already booked</span>
-           <span class="flex items-center gap-1"><span style="width:10px;height:10px;border-radius:2px;background:#b026ff;display:inline-block"></span> Your pick</span>`
-        : '';
 }
 
 function toggleDate(dateStr) {
@@ -1719,6 +1711,26 @@ function previewAndUploadPhoto(input) {
         .catch(() => showToast('Upload failed.', 'error'));
 }
 
+// ── Unread message notification polling ──────────────────
+{% if user.is_authenticated and not user.is_staff %}
+function pollUnread() {
+    fetch('{% url "unread_count" %}')
+        .then(r => r.json())
+        .then(d => {
+            const count = d.unread || 0;
+            const badge = document.getElementById('sidebarMsgBadge');
+            const countEl = document.getElementById('sidebarMsgCount');
+            if (badge) badge.classList.toggle('hidden', count === 0);
+            if (countEl) {
+                countEl.textContent = count > 9 ? '9+' : count;
+                countEl.classList.toggle('hidden', count === 0);
+            }
+        }).catch(() => {});
+}
+// Poll every 30 seconds
+document.addEventListener('DOMContentLoaded', () => { pollUnread(); setInterval(pollUnread, 30000); });
+{% endif %}
+
 // ── Helpers ──────────────────────────────────────────────
 function getCsrf() {
     const el = document.querySelector('[name=csrfmiddlewaretoken]');
@@ -1729,11 +1741,319 @@ function showToast(msg, type = 'info') {
     const el = document.createElement('div');
     const bg = type === 'success' ? '#00f3ff' : type === 'error' ? '#ef4444' : '#b026ff';
     const tc = type === 'success' ? '#000' : '#fff';
-    const bottomOffset = window.innerWidth < 768 ? '72px' : '24px';
-    el.style.cssText = `position:fixed;bottom:${bottomOffset};right:24px;z-index:9999;padding:12px 20px;border-radius:8px;font-weight:700;font-size:0.875rem;color:${tc};background:${bg};box-shadow:0 4px 20px rgba(0,0,0,0.4);animation:slideIn .3s ease;max-width:calc(100vw - 48px)`;
+    el.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:8px;font-weight:700;font-size:0.875rem;color:${tc};background:${bg};box-shadow:0 4px 20px rgba(0,0,0,0.4);animation:slideIn .3s ease`;
     el.textContent = msg;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 3500);
+}
+
+// ── Progress Feed ──────────────────────────────────────────
+
+let _feedImageFiles = [];
+
+function previewFeedImages(input) {
+    _feedImageFiles = Array.from(input.files);
+    const grid = document.getElementById('feedImagePreviewGrid');
+    const clearBtn = document.getElementById('clearImagesBtn');
+    grid.innerHTML = '';
+    if (!_feedImageFiles.length) { grid.classList.add('hidden'); clearBtn.classList.add('hidden'); return; }
+    grid.classList.remove('hidden');
+    clearBtn.classList.remove('hidden');
+    _feedImageFiles.forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const wrap = document.createElement('div');
+            wrap.className = 'relative rounded-xl overflow-hidden';
+            wrap.style.cssText = 'aspect-ratio:1;background:#111';
+            wrap.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">
+                <span class="absolute bottom-1 right-1 text-xs font-bold px-1.5 py-0.5 rounded" style="background:rgba(0,0,0,.7);color:#fff">${idx+1}</span>`;
+            grid.appendChild(wrap);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function clearFeedImages() {
+    _feedImageFiles = [];
+    document.getElementById('feedImageInput').value = '';
+    const grid = document.getElementById('feedImagePreviewGrid');
+    grid.innerHTML = '';
+    grid.classList.add('hidden');
+    document.getElementById('clearImagesBtn').classList.add('hidden');
+}
+
+async function loadFeed() {
+    try {
+        const res = await fetch('/feed/');
+        const data = await res.json();
+        renderFeed(data.posts);
+    } catch(e) {
+        const el = document.getElementById('feedEmpty');
+        if (el) el.textContent = 'Could not load feed.';
+    }
+}
+
+function renderFeed(posts) {
+    const list = document.getElementById('feedList');
+    const empty = document.getElementById('feedEmpty');
+    if (!posts || !posts.length) {
+        list.innerHTML = '';
+        if (empty) { empty.classList.remove('hidden'); empty.querySelector ? empty.textContent = 'No posts yet. Be the first to share! 💪' : ''; }
+        return;
+    }
+    if (empty) empty.classList.add('hidden');
+    list.innerHTML = '';
+    posts.forEach(p => list.appendChild(buildFeedCard(p)));
+}
+
+function buildFeedCard(p) {
+    const card = document.createElement('div');
+    card.id = `feed-card-${p.id}`;
+    card.className = 'glass-card rounded-2xl p-5 transition-all duration-300';
+    const pinnedBorder = p.is_pinned ? 'border:1px solid rgba(176,38,255,.5);box-shadow:0 0 20px rgba(176,38,255,.1)' : 'border:1px solid rgba(255,255,255,.07)';
+    card.style.cssText = pinnedBorder;
+
+    const initials = p.author.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2);
+    const avatarHtml = p.photo_url
+        ? `<img src="${p.photo_url}" class="w-11 h-11 rounded-full object-cover object-top flex-shrink-0 border-2" style="border-color:${p.is_trainer ? '#b026ff' : '#00f3ff'}" alt="">`
+        : `<div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-black text-sm" style="background:linear-gradient(135deg,${p.is_trainer ? '#b026ff,#ff0055' : '#00f3ff,#b026ff'})">${initials}</div>`;
+
+    const trainerBadge = p.is_trainer
+        ? `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold ml-1" style="background:linear-gradient(135deg,rgba(176,38,255,.3),rgba(255,0,85,.2));color:#b026ff;border:1px solid rgba(176,38,255,.4)"><i class="fa-solid fa-dumbbell text-xs"></i> TRAINER</span>`
+        : `<span class="text-xs px-2 py-0.5 rounded-full font-bold ml-1" style="background:rgba(0,243,255,.1);color:#00f3ff;border:1px solid rgba(0,243,255,.2)">Member</span>`;
+
+    const pinBadge = p.is_pinned
+        ? `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)"><i class="fa-solid fa-thumbtack text-xs"></i> Pinned</span>`
+        : '';
+
+    const meId = {{ user.pk }};
+    const isAdmin = {{ user.is_superuser|yesno:'true,false' }};
+    const canDelete = (p.author_id === meId) || isAdmin;
+    const commentsHtml = p.comments.map(c => buildCommentHtml(c, meId)).join('');
+
+    // Multi-image gallery or single image
+    let imagesHtml = '';
+    if (p.image_urls && p.image_urls.length > 1) {
+        const cols = p.image_urls.length === 2 ? 'grid-cols-2' : p.image_urls.length === 3 ? 'grid-cols-3' : 'grid-cols-2';
+        const imgs = p.image_urls.map((url, i) =>
+            `<div class="relative overflow-hidden rounded-xl" style="aspect-ratio:1;background:#111;">
+                <img src="${url}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300" onclick="openLightbox('${escHtml(url)}')" alt="photo ${i+1}">
+             </div>`
+        ).join('');
+        imagesHtml = `<div class="grid ${cols} gap-2 mb-3">${imgs}</div>`;
+    } else if (p.image_url) {
+        imagesHtml = `<div class="mb-3 rounded-xl overflow-hidden" style="background:#111">
+            <img src="${p.image_url}" class="w-full object-cover cursor-pointer hover:opacity-90 transition-opacity" style="max-height:480px;object-fit:cover;width:100%" onclick="openLightbox('${escHtml(p.image_url)}')" alt="progress photo">
+        </div>`;
+    }
+
+    card.innerHTML = `
+        <div class="flex items-start gap-3 mb-3">
+            ${avatarHtml}
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center flex-wrap gap-1">
+                    <span class="font-bold text-sm">${escHtml(p.author)}</span>${trainerBadge}${pinBadge}
+                </div>
+                <p class="text-gray-500 text-xs mt-0.5">${p.created_at}</p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                ${isAdmin ? `<button onclick="togglePinPost(${p.id}, this)" title="${p.is_pinned ? 'Unpin' : 'Pin post'}" class="text-xs transition-colors p-1.5 rounded-lg hover:bg-white/10" style="color:${p.is_pinned ? '#b026ff' : '#4b5563'}"><i class="fa-solid fa-thumbtack"></i></button>` : ''}
+                ${canDelete ? `<button onclick="deleteFeedPost(${p.id})" class="text-gray-600 hover:text-red-400 text-xs transition-colors p-1.5 rounded-lg hover:bg-white/10" title="Delete post"><i class="fa-solid fa-trash"></i></button>` : ''}
+            </div>
+        </div>
+        ${p.caption ? `<p class="text-gray-200 text-sm mb-3 leading-relaxed whitespace-pre-wrap">${escHtml(p.caption)}</p>` : ''}
+        ${imagesHtml}
+        <div class="flex items-center gap-5 pt-3 border-t border-white/8 text-sm">
+            <button onclick="toggleFeedLike(${p.id}, this)" id="like-btn-${p.id}" class="flex items-center gap-1.5 transition-colors font-medium" style="color:${p.liked_by_me ? '#ef4444' : '#6b7280'}">
+                <i class="fa-${p.liked_by_me ? 'solid' : 'regular'} fa-heart"></i>
+                <span id="like-count-${p.id}">${p.like_count}</span>
+            </button>
+            <button onclick="toggleFeedComments(${p.id})" class="flex items-center gap-1.5 text-gray-500 hover:text-white transition-colors">
+                <i class="fa-regular fa-comment"></i>
+                <span id="cmt-count-${p.id}">${p.comment_count}</span>
+            </button>
+        </div>
+        <div id="comments-${p.id}" class="hidden mt-4 space-y-3">
+            <div id="cmt-list-${p.id}" class="space-y-2">${commentsHtml}</div>
+            <div class="flex items-center gap-2 mt-3">
+                <input id="cmt-input-${p.id}" type="text" placeholder="Write a comment…"
+                    class="flex-1 text-xs bg-white/5 rounded-full px-4 py-2 text-white placeholder-gray-500 outline-none border border-white/10 focus:border-cyan-400/60 transition-colors"
+                    onkeydown="if(event.key==='Enter') submitFeedComment(${p.id})">
+                <button onclick="submitFeedComment(${p.id})" class="px-4 py-2 rounded-full text-xs font-bold transition-all" style="background:rgba(0,243,255,.15);color:#00f3ff">Send</button>
+            </div>
+        </div>`;
+    return card;
+}
+
+function buildCommentHtml(c, meId) {
+    const canDel = c.author_id === meId || {{ user.is_superuser|yesno:'true,false' }};
+    const initials = c.author.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2);
+    const avatarHtml = c.photo_url
+        ? `<img src="${c.photo_url}" class="w-7 h-7 rounded-full object-cover object-top flex-shrink-0 border" style="border-color:${c.is_trainer ? '#b026ff' : '#00f3ff'}" alt="">`
+        : `<div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-black text-xs" style="background:linear-gradient(135deg,${c.is_trainer ? '#b026ff,#ff0055' : '#00f3ff,#b026ff'})">${initials}</div>`;
+    const tBadge = c.is_trainer ? `<span class="text-xs" style="color:#b026ff;font-weight:700">· TRAINER</span>` : '';
+    return `<div id="cmt-item-${c.id}" class="flex items-start gap-2 text-xs">
+        ${avatarHtml}
+        <div class="flex-1 rounded-xl px-3 py-2" style="background:rgba(255,255,255,.05)">
+            <span class="font-bold text-gray-300 mr-1">${escHtml(c.author)}</span>${tBadge}
+            <span class="text-gray-400 ml-1">${escHtml(c.body)}</span>
+            <span class="text-gray-600 ml-1 text-xs">${c.created_at}</span>
+        </div>
+        ${canDel ? `<button onclick="deleteFeedComment(${c.id})" class="text-gray-600 hover:text-red-400 transition-colors mt-1 flex-shrink-0" title="Delete comment"><i class="fa-solid fa-xmark text-xs"></i></button>` : ''}
+    </div>`;
+}
+
+// Lightbox
+function openLightbox(url) {
+    let lb = document.getElementById('feedLightbox');
+    if (!lb) {
+        lb = document.createElement('div');
+        lb.id = 'feedLightbox';
+        lb.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+        lb.onclick = () => lb.remove();
+        document.body.appendChild(lb);
+    }
+    lb.innerHTML = `<img src="${url}" style="max-width:95vw;max-height:92vh;object-fit:contain;border-radius:12px">
+        <button onclick="document.getElementById('feedLightbox').remove()" style="position:absolute;top:1rem;right:1rem;color:#fff;font-size:1.5rem;background:rgba(255,255,255,.1);border:none;cursor:pointer;border-radius:50%;width:40px;height:40px">&times;</button>`;
+    document.body.appendChild(lb);
+}
+
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function toggleFeedComments(postId) {
+    const el = document.getElementById(`comments-${postId}`);
+    el.classList.toggle('hidden');
+    if (!el.classList.contains('hidden')) {
+        document.getElementById(`cmt-input-${postId}`).focus();
+    }
+}
+
+async function toggleFeedLike(postId, btn) {
+    const res = await fetch('/feed/like/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ post_id: postId })
+    });
+    const data = await res.json();
+    if (!data.ok) return;
+    btn.style.color = data.liked ? '#ef4444' : '#6b7280';
+    btn.querySelector('i').className = `fa-${data.liked ? 'solid' : 'regular'} fa-heart`;
+    document.getElementById(`like-count-${postId}`).textContent = data.like_count;
+}
+
+async function submitFeedComment(postId) {
+    const input = document.getElementById(`cmt-input-${postId}`);
+    const body = input.value.trim();
+    if (!body) return;
+    const res = await fetch('/feed/comment/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ post_id: postId, body })
+    });
+    const data = await res.json();
+    if (!data.ok) { showToast(data.error || 'Error', 'error'); return; }
+    input.value = '';
+    const meId = {{ user.pk }};
+    document.getElementById(`cmt-list-${postId}`).insertAdjacentHTML('beforeend', buildCommentHtml(data.comment, meId));
+    const cnt = document.getElementById(`cmt-count-${postId}`);
+    cnt.textContent = parseInt(cnt.textContent || 0) + 1;
+    document.getElementById(`comments-${postId}`).classList.remove('hidden');
+}
+
+async function deleteFeedPost(postId) {
+    if (!confirm('Delete this post?')) return;
+    const res = await fetch('/feed/delete-post/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ post_id: postId })
+    });
+    const data = await res.json();
+    if (data.ok) {
+        const el = document.getElementById(`feed-card-${postId}`);
+        if (el) el.remove();
+        showToast('Post deleted.', 'success');
+    }
+}
+
+async function deleteFeedComment(commentId) {
+    const res = await fetch('/feed/delete-comment/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ comment_id: commentId })
+    });
+    const data = await res.json();
+    if (data.ok) {
+        const el = document.getElementById(`cmt-item-${commentId}`);
+        if (el) el.remove();
+    }
+}
+
+async function togglePinPost(postId, btn) {
+    const res = await fetch('/feed/pin/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ post_id: postId })
+    });
+    const data = await res.json();
+    if (data.ok) {
+        showToast(data.pinned ? '📌 Post pinned!' : 'Post unpinned.', 'success');
+        loadFeed(); // reload to re-sort with pinned at top
+    }
+}
+
+async function submitFeedPost() {
+    const caption = document.getElementById('feedCaption').value.trim();
+    if (!caption && !_feedImageFiles.length) { showToast('Add a caption or photo first.', 'error'); return; }
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', getCsrf());
+    if (caption) fd.append('caption', caption);
+    _feedImageFiles.forEach((f, i) => fd.append('images', f));
+    const btn = document.querySelector('[onclick="submitFeedPost()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
+    const res = await fetch('/feed/post/', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1"></i> Post'; }
+    if (data.ok) {
+        document.getElementById('feedCaption').value = '';
+        clearFeedImages();
+        loadFeed();
+        showToast('Progress posted! 💪', 'success');
+    } else {
+        showToast(data.error || 'Error posting.', 'error');
+    }
+}
+
+// ── Site Review ──────────────────────────────────────────
+
+let _siteStars = parseInt(document.getElementById('siteReviewStars')?.value || '0');
+
+function setSiteStar(n) {
+    _siteStars = n;
+    document.getElementById('siteReviewStars').value = n;
+    document.querySelectorAll('.site-star-btn').forEach(btn => {
+        const s = parseInt(btn.dataset.star);
+        btn.style.color = s <= n ? '#fbbf24' : '#4b5563';
+    });
+}
+
+async function submitSiteReview() {
+    if (!_siteStars) { showToast('Please select a star rating.', 'error'); return; }
+    const comment = document.getElementById('siteReviewComment').value.trim();
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', getCsrf());
+    fd.append('stars', _siteStars);
+    fd.append('comment', comment);
+    const res = await fetch('/site-review/', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.success) {
+        showToast('Thank you for your review! 🌟', 'success');
+    } else {
+        showToast(data.error || 'Error submitting review.', 'error');
+    }
 }
 </script>
 </body>

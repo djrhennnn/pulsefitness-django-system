@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import UserProfile, Trainer, BookingRequest, Message
+from .models import UserProfile, Trainer, BookingRequest, Message, ProgressPost, PostComment
 
 
 @admin.register(UserProfile)
@@ -100,6 +100,54 @@ class MessageAdmin(admin.ModelAdmin):
     def short_body(self, obj):
         return obj.body[:60] + '…' if len(obj.body) > 60 else obj.body
     short_body.short_description = 'Message'
+
+
+@admin.register(ProgressPost)
+class ProgressPostAdmin(admin.ModelAdmin):
+    list_display   = ('author', 'short_caption', 'image_thumb', 'like_count', 'comment_count', 'created_at')
+    search_fields  = ('author__username', 'author__first_name', 'caption')
+    readonly_fields = ('created_at', 'like_count', 'comment_count', 'image_preview')
+    ordering       = ('-created_at',)
+
+    def short_caption(self, obj):
+        return (obj.caption[:60] + '…') if len(obj.caption) > 60 else obj.caption or '(image only)'
+    short_caption.short_description = 'Caption'
+
+    def image_thumb(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="width:48px;height:48px;object-fit:cover;border-radius:8px">', obj.image.url)
+        return '—'
+    image_thumb.short_description = 'Image'
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-width:300px;border-radius:12px">', obj.image.url)
+        return 'No image'
+    image_preview.short_description = 'Preview'
+
+    def like_count(self, obj):
+        return obj.likes.count()
+    like_count.short_description = 'Likes'
+
+    def comment_count(self, obj):
+        return obj.comments.count()
+    comment_count.short_description = 'Comments'
+
+
+@admin.register(PostComment)
+class PostCommentAdmin(admin.ModelAdmin):
+    list_display   = ('author', 'post_author', 'short_body', 'created_at')
+    search_fields  = ('author__username', 'body')
+    readonly_fields = ('created_at',)
+    ordering       = ('-created_at',)
+
+    def post_author(self, obj):
+        return obj.post.author.get_full_name() or obj.post.author.username
+    post_author.short_description = 'On post by'
+
+    def short_body(self, obj):
+        return (obj.body[:60] + '…') if len(obj.body) > 60 else obj.body
+    short_body.short_description = 'Comment'
 
 
 # ── Admin site branding ──────────────────────────────────

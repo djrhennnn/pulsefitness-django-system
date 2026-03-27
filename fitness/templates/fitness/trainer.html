@@ -19,64 +19,15 @@
         .status-badge-pending{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
         .status-badge-confirmed{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
         .status-badge-cancelled{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+        .status-badge-expired{background:rgba(107,114,128,.15);color:#9ca3af;border:1px solid rgba(107,114,128,.3)}
         .status-badge-completed{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
         @keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+        .notif-dot{position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:#ef4444;border:2px solid #050505}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
         .star-btn{cursor:pointer;font-size:1.6rem;color:#4b5563;transition:color .15s ease}
         .star-btn.active{color:#fbbf24}
         .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center}
         option{background:#1f2937}
-
-        /* ── MOBILE RESPONSIVE FIXES ── */
-
-        /* Bottom nav active state */
-        .mobile-tab-btn{transition:color .15s ease}
-        .mobile-tab-btn.active-tab{color:#00f3ff !important}
-
-        /* Exercise row grid: stack on tiny screens */
-        @media(max-width:480px){
-            .ex-grid{grid-template-columns:1fr 1fr !important}
-        }
-
-        /* Header: hide trainer name badge on very small screens, keep logout */
-        @media(max-width:400px){
-            .trainer-name-badge{display:none !important}
-        }
-
-        /* Main padding: account for bottom tab bar */
-        @media(max-width:1023px){
-            .trainer-main{padding-bottom:5rem !important}
-        }
-
-        /* Booking card actions: wrap neatly on mobile */
-        @media(max-width:640px){
-            .booking-actions-wrap{flex-wrap:wrap !important;gap:0.4rem !important}
-            /* Client table: make scrollable */
-            .client-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-            /* Stats grid: 2 cols on mobile */
-            .trainer-stats-grid{grid-template-columns:1fr 1fr !important}
-            /* Booking filter buttons: scroll horizontally */
-            .booking-filters{flex-wrap:nowrap !important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-            .booking-filters::-webkit-scrollbar{height:0}
-            /* Schedule header */
-            .schedule-header{flex-direction:column;align-items:flex-start !important}
-            /* Calendar cells smaller */
-            #calGrid .h-12{height:2.5rem}
-            /* Workout modal full width */
-            #workoutPlanModal > div{margin:0.5rem !important;padding:1rem !important}
-            /* Rate client modal */
-            #rateClientModal > div{margin:0 0.75rem;padding:1.5rem !important}
-            /* Toast position above bottom nav */
-            .toast-el{bottom:70px !important}
-        }
-
-        @media(max-width:360px){
-            /* Very small phones */
-            .booking-actions-wrap .px-3{padding-left:0.5rem !important;padding-right:0.5rem !important}
-        }
-
-        /* Smooth tab content transitions */
-        .tab-content{animation:fadeIn .2s ease}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
     </style>
 </head>
 <body>
@@ -90,6 +41,18 @@
     </div>
 </div>
 {% else %}
+
+<!-- Client Rating History Modal -->
+<div id="clientRatingModal" class="modal-overlay hidden" onclick="if(event.target===this)closeClientRatingModal()">
+    <div class="glass-card rounded-2xl p-7 w-full max-w-md mx-4 relative" style="border:1px solid rgba(251,191,36,.3);max-height:85vh;overflow-y:auto">
+        <button onclick="closeClientRatingModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+        <h3 class="font-display text-lg font-bold mb-1">Client <span style="color:#fbbf24">Rating History</span></h3>
+        <p class="text-gray-400 text-xs mb-5">Ratings left by past trainers for this client.</p>
+        <div id="clientRatingContent" class="space-y-3">
+            <div class="text-center text-gray-500 py-6"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
+        </div>
+    </div>
+</div>
 
 <!-- Rate Client Modal -->
 <div id="rateClientModal" class="modal-overlay hidden">
@@ -162,7 +125,7 @@
         <i class="fa-solid fa-bolt" style="color:#00f3ff"></i>PULSE<span style="color:#00f3ff">FITNESS</span>
     </a>
     <div class="flex items-center gap-3">
-        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold trainer-name-badge" style="background:rgba(0,243,255,.1);border:1px solid rgba(0,243,255,.3);color:#00f3ff">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold" style="background:rgba(0,243,255,.1);border:1px solid rgba(0,243,255,.3);color:#00f3ff">
             <i class="fa-solid fa-dumbbell"></i> {{ trainer.name }}
         </div>
         <a href="{% url 'logout' %}" class="px-3 py-1.5 text-xs rounded-lg font-bold" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)">
@@ -213,11 +176,22 @@
                 <i class="fa-solid fa-calendar-check w-4"></i>My Bookings
                 {% if pending_count > 0 %}<span class="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold" style="background:#fbbf24;color:#000">{{ pending_count }}</span>{% endif %}
             </button>
+            <button onclick="showTab('messages_tab')" id="tab-btn-messages_tab" class="tab-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <span class="relative" style="width:1rem;display:inline-block">
+                    <i class="fa-solid fa-message"></i>
+                    {% if unread_count > 0 %}<span class="notif-dot"></span>{% endif %}
+                </span>
+                Messages
+                {% if unread_count > 0 %}<span class="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold" style="background:#ef4444;color:#fff">{{ unread_count }}</span>{% endif %}
+            </button>
             <button onclick="showTab('clients')" id="tab-btn-clients" class="tab-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
                 <i class="fa-solid fa-users w-4"></i>My Clients
             </button>
             <button onclick="showTab('schedule')" id="tab-btn-schedule" class="tab-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
                 <i class="fa-solid fa-calendar w-4"></i>Schedule
+            </button>
+            <button onclick="showTab('feed')" id="tab-btn-feed" class="tab-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <i class="fa-solid fa-fire w-4"></i>Progress Feed
             </button>
         </nav>
 
@@ -229,15 +203,19 @@
     </aside>
 
     <!-- Mobile bottom tab bar -->
-    <div class="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/10" style="background:rgba(10,10,10,.97);backdrop-filter:blur(12px)">
-        <button onclick="showTab('overview');setMobileTabActive(this)"  class="mobile-tab-btn flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 active-tab" style="color:#00f3ff"><i class="fa-solid fa-chart-line text-base"></i><span>Overview</span></button>
-        <button onclick="showTab('bookings');setMobileTabActive(this)"  class="mobile-tab-btn flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1" style="color:#6b7280"><i class="fa-solid fa-calendar-check text-base"></i><span>Bookings</span></button>
-        <button onclick="showTab('clients');setMobileTabActive(this)"   class="mobile-tab-btn flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1" style="color:#6b7280"><i class="fa-solid fa-users text-base"></i><span>Clients</span></button>
-        <button onclick="showTab('schedule');setMobileTabActive(this)"  class="mobile-tab-btn flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1" style="color:#6b7280"><i class="fa-solid fa-calendar text-base"></i><span>Schedule</span></button>
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/10" style="background:rgba(10,10,10,.97)">
+        <button onclick="showTab('overview')"  class="flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1" style="color:#00f3ff"><i class="fa-solid fa-chart-line"></i>Overview</button>
+        <button onclick="showTab('bookings')"  class="flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 text-gray-500"><i class="fa-solid fa-calendar-check"></i>Bookings</button>
+        <button onclick="showTab('clients')"   class="flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 text-gray-500"><i class="fa-solid fa-users"></i>Clients</button>
+        <button onclick="showTab('messages_tab')" class="flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 text-gray-500 relative">
+            <i class="fa-solid fa-message"></i>Msgs
+            {% if unread_count > 0 %}<span class="notif-dot" style="position:absolute;top:6px;right:calc(50% - 14px)"></span>{% endif %}
+        </button>
+        <button onclick="showTab('schedule')"  class="flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 text-gray-500"><i class="fa-solid fa-calendar"></i>Schedule</button>
     </div>
 
     <!-- Main -->
-    <main class="flex-1 lg:ml-56 p-5 md:p-8 pb-24 lg:pb-8 trainer-main">
+    <main class="flex-1 lg:ml-56 p-5 md:p-8 pb-24 lg:pb-8">
 
         {% csrf_token %}
 
@@ -249,7 +227,7 @@
             </div>
 
             <!-- Stats -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 trainer-stats-grid">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div class="glass-card p-4 rounded-xl text-center">
                     <div class="text-2xl font-bold mb-1" style="color:#00f3ff">{{ bookings.count }}</div>
                     <div class="text-xs text-gray-400">Total Bookings</div>
@@ -327,7 +305,7 @@
         <div id="tab-bookings" class="tab-content hidden">
             <div class="flex justify-between items-center mb-5 flex-wrap gap-3">
                 <h2 class="font-display text-xl font-bold">MY BOOKINGS</h2>
-                <div class="flex gap-2 flex-wrap booking-filters">
+                <div class="flex gap-2 flex-wrap">
                     <button onclick="filterBookings('all')"       class="booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:#00f3ff;color:#000" data-f="all">All</button>
                     <button onclick="filterBookings('pending')"   class="booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="pending">Pending</button>
                     <button onclick="filterBookings('confirmed')" class="booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="confirmed">Confirmed</button>
@@ -348,7 +326,15 @@
                             <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-black text-sm flex-shrink-0" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">{{ b.member.first_name|first|upper }}{{ b.member.last_name|first|upper }}</div>
                             {% endif %}
                             <div class="min-w-0">
-                                <div class="font-bold text-sm mb-0.5">{{ b.member.get_full_name|default:b.member.username }}</div>
+                                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                                    <span class="font-bold text-sm">{{ b.member.get_full_name|default:b.member.username }}</span>
+                                    {% if b.member.profile.avg_rating %}
+                                    <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold" style="background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)" title="Avg rating from past trainers">
+                                        <i class="fa-solid fa-star text-xs"></i> {{ b.member.profile.avg_rating }}/5
+                                        <span style="color:#9ca3af;font-weight:400">({{ b.member.profile.rating_count }} trainer{{ b.member.profile.rating_count|pluralize }})</span>
+                                    </span>
+                                    {% endif %}
+                                </div>
                                 <div class="text-xs text-gray-500">{{ b.member.email }} · {{ b.requested_at|date:"M d, Y · g:i A" }}</div>
                                 {% if b.notes %}<p class="text-gray-400 text-xs mt-1 italic">"{{ b.notes }}"</p>{% endif %}
                                 {% if b.scheduled_sessions.exists %}
@@ -377,7 +363,7 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap booking-actions-wrap">
+                        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
                             <span class="status-badge-{{ b.status }} text-xs px-2.5 py-1 rounded-full font-bold" id="status-badge-{{ b.id }}">{{ b.status|upper }}</span>
                             <a href="{% url 'chat' b.id %}" class="px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1 transition-all hover:opacity-80" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)">
                                 <i class="fa-solid fa-message text-xs"></i> Chat
@@ -436,7 +422,7 @@
             </div>
             {% if members %}
             <div class="glass-card rounded-2xl overflow-hidden">
-                <div class="overflow-x-auto client-table-wrap">
+                <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-white/10 text-left">
@@ -469,10 +455,20 @@
                                 </td>
                                 <td class="px-4 py-3">
                                     {% if m.profile.avg_rating %}
-                                    <span class="text-yellow-400 text-sm font-bold">★ {{ m.profile.avg_rating }}</span>
-                                    <span class="text-gray-500 text-xs ml-1">({{ m.profile.rating_count }})</span>
+                                    <button onclick="showClientRatingHistory({{ m.id }})" class="text-left group" title="View rating details">
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="flex gap-0.5">
+                                                {% for i in "12345" %}
+                                                <span class="text-xs {% if m.profile.avg_rating >= forloop.counter %}text-yellow-400{% else %}text-gray-600{% endif %}">★</span>
+                                                {% endfor %}
+                                            </div>
+                                            <span class="text-yellow-400 text-xs font-bold">{{ m.profile.avg_rating }}</span>
+                                            <span class="text-gray-500 text-xs">({{ m.profile.rating_count }})</span>
+                                        </div>
+                                        <span class="text-xs text-gray-600 group-hover:text-purple-400 transition-colors">View details →</span>
+                                    </button>
                                     {% else %}
-                                    <span class="text-gray-600 text-xs">No rating</span>
+                                    <span class="text-gray-600 text-xs italic">No rating yet</span>
                                     {% endif %}
                                 </td>
                                 <td class="px-4 py-3 text-gray-400 text-xs">
@@ -506,6 +502,49 @@
             <div class="text-center py-16 text-gray-500">
                 <i class="fa-solid fa-users text-5xl mb-4 block"></i>
                 <p>No clients yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ── MESSAGES TAB ── -->
+        <div id="tab-messages_tab" class="tab-content hidden">
+            <h2 class="font-display text-xl font-bold mb-5">CLIENT <span style="color:#b026ff">MESSAGES</span></h2>
+            {% if bookings %}
+            <div class="space-y-3">
+                {% for b in bookings %}
+                {% if b.status == 'confirmed' or b.status == 'pending' %}
+                <a href="{% url 'chat' b.id %}" class="glass-card p-4 rounded-xl flex items-center gap-4 hover:border-purple-500/40 transition-all block" style="text-decoration:none">
+                    <div class="relative flex-shrink-0">
+                        {% if b.member.profile.photo %}
+                        <img src="{{ b.member.profile.photo.url }}" class="w-11 h-11 rounded-full object-cover object-top border-2" style="border-color:rgba(176,38,255,.5)" alt="">
+                        {% else %}
+                        <div class="w-11 h-11 rounded-full flex items-center justify-center font-bold text-black text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">{{ b.member.first_name|first|upper }}{{ b.member.last_name|first|upper }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-sm">{{ b.member.get_full_name|default:b.member.username }}</div>
+                        <div class="text-gray-400 text-xs mt-0.5">
+                            {% if b.messages.exists %}
+                            {% with last=b.messages.last %}
+                            {{ last.sender.first_name }}: {{ last.body|truncatechars:55 }}
+                            {% endwith %}
+                            {% else %}
+                            <span class="text-gray-600">No messages yet</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 flex items-center gap-2">
+                        <span class="status-badge-{{ b.status }} text-xs px-2 py-0.5 rounded-full font-bold">{{ b.status|upper }}</span>
+                        <i class="fa-solid fa-chevron-right text-xs text-gray-600"></i>
+                    </div>
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-16 text-gray-500">
+                <i class="fa-solid fa-comments text-5xl mb-4 block"></i>
+                <p>No active bookings to chat with yet.</p>
             </div>
             {% endif %}
         </div>
@@ -609,6 +648,43 @@
 
         </div>
 
+        <!-- ── FEED TAB ── -->
+        <div id="tab-feed" class="tab-content hidden p-6">
+            <h2 class="font-display text-2xl font-bold mb-6">PROGRESS <span style="color:#00f3ff">FEED</span></h2>
+
+            <!-- Composer -->
+            <div class="glass-card rounded-2xl p-5 mb-6" style="border:1px solid rgba(0,243,255,.15)">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-black text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">
+                        {{ trainer.name|slice:':2'|upper }}
+                    </div>
+                    <div class="flex-1">
+                        <textarea id="trainerFeedCaption" rows="2" placeholder="Share training tips, client wins, or your own progress…" class="w-full bg-transparent text-white placeholder-gray-500 text-sm resize-none outline-none border-b border-white/10 pb-2 mb-3"></textarea>
+                        <div id="trainerFeedImagePreviewWrap" class="hidden mb-3">
+                            <div class="relative inline-block">
+                                <img id="trainerFeedImagePreview" src="" class="max-h-48 rounded-xl object-cover" alt="preview">
+                                <button onclick="clearTrainerFeedImage()" class="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs" style="background:rgba(0,0,0,.7);color:#fff">&times;</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="cursor-pointer flex items-center gap-2 text-xs font-bold transition-colors hover:text-white" style="color:#00f3ff">
+                                <i class="fa-solid fa-image"></i> Photo
+                                <input type="file" id="trainerFeedImageInput" accept="image/*" class="hidden" onchange="previewTrainerFeedImage(this)">
+                            </label>
+                            <button onclick="submitTrainerFeedPost()" class="ml-auto px-5 py-2 rounded-full text-xs font-bold transition-all" style="background:linear-gradient(135deg,#00f3ff,#b026ff);color:#000">
+                                Post
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feed list -->
+            <div id="trainerFeedList" class="space-y-5">
+                <div class="text-center text-gray-500 py-10 text-sm" id="trainerFeedEmpty">Loading feed…</div>
+            </div>
+        </div>
+
     </main>
 </div>
 
@@ -623,16 +699,7 @@ function showTab(name) {
     document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('tab-active'); b.style.color='#9ca3af'; b.style.background='transparent'; });
     const active = document.getElementById('tab-btn-' + name);
     if (active) active.classList.add('tab-active');
-}
-
-// ── Mobile bottom tab active state ───────────────────────
-function setMobileTabActive(el) {
-    document.querySelectorAll('.mobile-tab-btn').forEach(b => {
-        b.style.color = '#6b7280';
-        b.classList.remove('active-tab');
-    });
-    el.style.color = '#00f3ff';
-    el.classList.add('active-tab');
+    if (name === 'feed') loadTrainerFeed();
 }
 
 // ── Booking filter ────────────────────────────────────────
@@ -713,6 +780,47 @@ function markSessionDone(bookingId) {
         }).catch(() => showToast('Network error.', 'error'));
 }
 
+// ── Client rating history ──────────────────────────────────
+const _memberRatings = {{ member_ratings_json|safe }};
+
+function showClientRatingHistory(memberId) {
+    const modal = document.getElementById('clientRatingModal');
+    const content = document.getElementById('clientRatingContent');
+    modal.classList.remove('hidden');
+    const data = _memberRatings[memberId];
+    if (!data || !data.ratings || !data.ratings.length) {
+        content.innerHTML = `<div class="text-center text-gray-500 py-6">
+            <i class="fa-solid fa-star text-3xl block mb-2" style="color:#4b5563"></i>
+            No ratings from past trainers yet.
+        </div>`;
+        return;
+    }
+    const stars = n => '★'.repeat(n) + '☆'.repeat(5-n);
+    const avg = data.avg ? `<div class="flex items-center gap-2 mb-4 p-3 rounded-xl" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2)">
+        <span class="text-yellow-400 text-2xl font-bold">${data.avg}</span>
+        <div>
+            <div class="text-yellow-400 text-sm font-bold">${stars(Math.round(data.avg))}</div>
+            <div class="text-gray-400 text-xs">Average from ${data.count} trainer${data.count>1?'s':''}</div>
+        </div>
+    </div>` : '';
+    const cards = data.ratings.map(r => {
+        const date = new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+        return `<div class="rounded-xl p-4" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">
+            <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-sm">${r['trainer__name']}</span>
+                <span class="text-yellow-400 text-sm font-bold">${r.stars}/5 ${'★'.repeat(r.stars)}</span>
+            </div>
+            ${r.comment ? `<p class="text-gray-400 text-xs leading-relaxed">"${r.comment}"</p>` : ''}
+            <p class="text-gray-600 text-xs mt-1">${date}</p>
+        </div>`;
+    }).join('');
+    content.innerHTML = avg + cards;
+}
+
+function closeClientRatingModal() {
+    document.getElementById('clientRatingModal').classList.add('hidden');
+}
+
 // ── Rate client modal ─────────────────────────────────────
 let _clientStars = 0;
 function openRateClientModal(bookingId, clientName) {
@@ -776,7 +884,7 @@ function addExerciseRow(name='', sets='3', reps='', duration='') {
             <input type="text" class="ex-name form-input flex-1 px-3 py-2 rounded-lg text-sm" placeholder="Exercise name" value="${name}">
             <button onclick="document.getElementById('ex-row-${id}').remove()" class="text-gray-500 hover:text-red-400 ml-1"><i class="fa-solid fa-trash text-xs"></i></button>
         </div>
-        <div class="grid grid-cols-3 gap-2 ex-grid">
+        <div class="grid grid-cols-3 gap-2">
             <div>
                 <label class="text-xs text-gray-500 mb-1 block">Sets</label>
                 <input type="number" class="ex-sets form-input w-full px-3 py-2 rounded-lg text-sm" value="${sets}" min="1" max="20" placeholder="3">
@@ -838,10 +946,8 @@ function savePlan() {
 function showToast(msg, type = 'info') {
     const bg = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#00f3ff';
     const tc = type === 'error' ? '#fff' : '#000';
-    const bottomOffset = window.innerWidth < 1024 ? '80px' : '24px';
     const el = document.createElement('div');
-    el.className = 'toast-el';
-    el.style.cssText = `position:fixed;bottom:${bottomOffset};right:20px;z-index:9999;padding:12px 20px;border-radius:8px;font-weight:700;font-size:.875rem;color:${tc};background:${bg};animation:slideIn .3s ease;max-width:320px`;
+    el.style.cssText = `position:fixed;bottom:80px;right:20px;z-index:9999;padding:12px 20px;border-radius:8px;font-weight:700;font-size:.875rem;color:${tc};background:${bg};animation:slideIn .3s ease;max-width:320px`;
     el.textContent = msg;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 3500);
@@ -1208,6 +1314,189 @@ function deleteSession(sessionId) {
                 showToast(d.error || 'Failed to remove.', 'error');
             }
         }).catch(() => showToast('Network error.', 'error'));
+}
+
+// ── Trainer Progress Feed ─────────────────────────────────
+const TRAINER_ME_ID = {{ request.user.pk }};
+
+function previewTrainerFeedImage(input) {
+    const file = input.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('trainerFeedImagePreview').src = e.target.result;
+        document.getElementById('trainerFeedImagePreviewWrap').classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearTrainerFeedImage() {
+    document.getElementById('trainerFeedImageInput').value = '';
+    document.getElementById('trainerFeedImagePreview').src = '';
+    document.getElementById('trainerFeedImagePreviewWrap').classList.add('hidden');
+}
+
+async function loadTrainerFeed() {
+    try {
+        const res = await fetch('/feed/');
+        const data = await res.json();
+        renderTrainerFeed(data.posts);
+    } catch(e) {
+        const el = document.getElementById('trainerFeedEmpty');
+        if (el) el.textContent = 'Could not load feed.';
+    }
+}
+
+function renderTrainerFeed(posts) {
+    const list = document.getElementById('trainerFeedList');
+    const empty = document.getElementById('trainerFeedEmpty');
+    if (!posts || !posts.length) {
+        if (empty) empty.textContent = 'No posts yet. Be the first to share!';
+        list.innerHTML = '';
+        if (empty) list.appendChild(empty);
+        return;
+    }
+    if (empty) empty.classList.add('hidden');
+    list.innerHTML = '';
+    posts.forEach(p => list.appendChild(buildTrainerFeedCard(p)));
+}
+
+function tEsc(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function buildTrainerFeedCard(p) {
+    const card = document.createElement('div');
+    card.id = `t-feed-card-${p.id}`;
+    card.className = 'rounded-2xl p-5';
+    card.style.cssText = 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)';
+    const initials = p.author.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2);
+    const avatarHtml = p.photo_url
+        ? `<img src="${p.photo_url}" class="w-10 h-10 rounded-full object-cover object-top flex-shrink-0" alt="">`
+        : `<div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-black text-sm" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">${initials}</div>`;
+    const roleBadge = p.role === 'Trainer'
+        ? `<span class="text-xs px-2 py-0.5 rounded-full font-bold ml-1" style="background:rgba(176,38,255,.25);color:#b026ff">Trainer</span>`
+        : `<span class="text-xs px-2 py-0.5 rounded-full font-bold ml-1" style="background:rgba(0,243,255,.15);color:#00f3ff">Member</span>`;
+    const canDelete = (p.author_id === TRAINER_ME_ID);
+    const commentsHtml = p.comments.map(c => buildTCommentHtml(c)).join('');
+    card.innerHTML = `
+        <div class="flex items-start gap-3 mb-3">
+            ${avatarHtml}
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center flex-wrap gap-1">
+                    <span class="font-bold text-sm">${tEsc(p.author)}</span>${roleBadge}
+                </div>
+                <p class="text-gray-500 text-xs mt-0.5">${p.created_at}</p>
+            </div>
+            ${canDelete ? `<button onclick="tDeletePost(${p.id})" class="text-gray-600 hover:text-red-400 text-xs transition-colors ml-2 flex-shrink-0" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
+        </div>
+        ${p.caption ? `<p class="text-gray-200 text-sm mb-3 leading-relaxed whitespace-pre-wrap">${tEsc(p.caption)}</p>` : ''}
+        ${p.image_url ? `<img src="${p.image_url}" class="w-full rounded-xl object-cover mb-3 cursor-pointer" style="max-height:420px" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'420px':'none'" alt="progress">` : ''}
+        <div class="flex items-center gap-5 pt-3 border-t border-white/8 text-sm">
+            <button onclick="tToggleLike(${p.id}, this)" id="t-like-btn-${p.id}" class="flex items-center gap-1.5 transition-colors font-medium" style="color:${p.liked_by_me ? '#ef4444' : '#6b7280'}">
+                <i class="fa-${p.liked_by_me ? 'solid' : 'regular'} fa-heart"></i>
+                <span id="t-like-count-${p.id}">${p.like_count}</span>
+            </button>
+            <button onclick="tToggleComments(${p.id})" class="flex items-center gap-1.5 text-gray-500 hover:text-white transition-colors">
+                <i class="fa-regular fa-comment"></i>
+                <span id="t-cmt-count-${p.id}">${p.comment_count}</span>
+            </button>
+        </div>
+        <div id="t-comments-${p.id}" class="hidden mt-4 space-y-3">
+            <div id="t-cmt-list-${p.id}" class="space-y-2">${commentsHtml}</div>
+            <div class="flex items-center gap-2 mt-3">
+                <input id="t-cmt-input-${p.id}" type="text" placeholder="Write a comment..."
+                    class="flex-1 text-xs rounded-full px-4 py-2 text-white placeholder-gray-500 outline-none border border-white/10 focus:border-cyan-400/60 transition-colors" style="background:rgba(255,255,255,.05)"
+                    onkeydown="if(event.key==='Enter') tSubmitComment(${p.id})">
+                <button onclick="tSubmitComment(${p.id})" class="px-4 py-2 rounded-full text-xs font-bold" style="background:rgba(0,243,255,.15);color:#00f3ff">Send</button>
+            </div>
+        </div>`;
+    return card;
+}
+
+function buildTCommentHtml(c) {
+    const canDel = c.author_id === TRAINER_ME_ID;
+    const initials = c.author.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2);
+    return `<div id="t-cmt-item-${c.id}" class="flex items-start gap-2 text-xs">
+        <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-black text-xs" style="background:linear-gradient(135deg,#00f3ff,#b026ff)">${initials}</div>
+        <div class="flex-1 rounded-xl px-3 py-2" style="background:rgba(255,255,255,.05)">
+            <span class="font-bold text-gray-300 mr-1">${tEsc(c.author)}</span>
+            <span class="text-gray-400">${tEsc(c.body)}</span>
+            <span class="text-gray-600 ml-1">${c.created_at}</span>
+        </div>
+        ${canDel ? `<button onclick="tDeleteComment(${c.id})" class="text-gray-600 hover:text-red-400 transition-colors mt-1 flex-shrink-0"><i class="fa-solid fa-xmark text-xs"></i></button>` : ''}
+    </div>`;
+}
+
+function tToggleComments(postId) {
+    const el = document.getElementById(`t-comments-${postId}`);
+    el.classList.toggle('hidden');
+    if (!el.classList.contains('hidden')) document.getElementById(`t-cmt-input-${postId}`).focus();
+}
+
+async function tToggleLike(postId, btn) {
+    const res = await fetch('/feed/like/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ post_id: postId })
+    });
+    const data = await res.json(); if (!data.ok) return;
+    btn.style.color = data.liked ? '#ef4444' : '#6b7280';
+    btn.querySelector('i').className = `fa-${data.liked ? 'solid' : 'regular'} fa-heart`;
+    document.getElementById(`t-like-count-${postId}`).textContent = data.like_count;
+}
+
+async function tSubmitComment(postId) {
+    const input = document.getElementById(`t-cmt-input-${postId}`);
+    const body = input.value.trim(); if (!body) return;
+    const res = await fetch('/feed/comment/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ post_id: postId, body })
+    });
+    const data = await res.json(); if (!data.ok) return;
+    input.value = '';
+    document.getElementById(`t-cmt-list-${postId}`).insertAdjacentHTML('beforeend', buildTCommentHtml(data.comment));
+    const cnt = document.getElementById(`t-cmt-count-${postId}`);
+    cnt.textContent = parseInt(cnt.textContent || 0) + 1;
+    document.getElementById(`t-comments-${postId}`).classList.remove('hidden');
+}
+
+async function tDeletePost(postId) {
+    if (!confirm('Delete this post?')) return;
+    const res = await fetch('/feed/delete-post/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ post_id: postId })
+    });
+    const data = await res.json();
+    if (data.ok) { const el = document.getElementById(`t-feed-card-${postId}`); if (el) el.remove(); showToast('Post deleted.', 'success'); }
+}
+
+async function tDeleteComment(commentId) {
+    const res = await fetch('/feed/delete-comment/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ comment_id: commentId })
+    });
+    const data = await res.json();
+    if (data.ok) { const el = document.getElementById(`t-cmt-item-${commentId}`); if (el) el.remove(); }
+}
+
+async function submitTrainerFeedPost() {
+    const caption = document.getElementById('trainerFeedCaption').value.trim();
+    const imageInput = document.getElementById('trainerFeedImageInput');
+    const image = imageInput.files[0];
+    if (!caption && !image) { showToast('Add a caption or photo first.', 'error'); return; }
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', getCsrf());
+    if (caption) fd.append('caption', caption);
+    if (image) fd.append('image', image);
+    const res = await fetch('/feed/post/', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+        document.getElementById('trainerFeedCaption').value = '';
+        clearTrainerFeedImage();
+        loadTrainerFeed();
+        showToast('Progress posted! 💪', 'success');
+    } else {
+        showToast(data.error || 'Error posting.', 'error');
+    }
 }
 </script>
 
