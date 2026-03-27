@@ -98,7 +98,7 @@ class BookingRequest(models.Model):
     notes            = models.TextField(blank=True)
     total_sessions   = models.PositiveIntegerField(default=1)
     sessions_done    = models.IntegerField(default=0)
-
+    expires_at = models.DateTimeField(null=True, blank=True)
     def __str__(self):
         return f"{self.member.username} -> {self.trainer.name} ({self.status})"
 
@@ -147,6 +147,7 @@ class Message(models.Model):
     body      = models.TextField()
     sent_at   = models.DateTimeField(auto_now_add=True)
     is_read   = models.BooleanField(default=False)
+    voice_note = models.FileField(upload_to='voice_notes/', null=True, blank=True)
 
     class Meta:
         ordering = ['sent_at']
