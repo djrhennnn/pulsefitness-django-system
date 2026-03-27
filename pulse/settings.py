@@ -1,11 +1,12 @@
 from pathlib import Path
-import os
+import os 
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-!m9=q8np472ht$jz2y2y$+4@i80*z_+1-1g6mi%v+5)t-_&%aa'
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['pulsefitness.onrender.com',
     'pulsesystems.tech',
@@ -23,13 +24,14 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'pulse.urls'
@@ -52,11 +54,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'pulse.wsgi.application'
 
+import dj_database_url
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f'sqlite:///{os.path.join(BASE_DIR, "db.sqlite3")}'
+    )
 }
 
 AUTH_PASSWORD_VALIDATORS = [
