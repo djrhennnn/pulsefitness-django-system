@@ -402,6 +402,9 @@ def trainer_dashboard(request):
     expire_pending_bookings()
 
     trainer  = get_trainer_for_user(request.user)
+    if trainer is None:                      # ← ADD THIS LINE
+        return redirect('member_dashboard')  # ← ADD THIS LINE
+
     bookings = BookingRequest.objects.filter(
         trainer=trainer).select_related('member', 'member__profile').order_by('-requested_at')
 
@@ -411,6 +414,8 @@ def trainer_dashboard(request):
     unread = Message.objects.filter(
         booking__trainer=trainer, is_read=False
     ).exclude(sender=request.user).count()
+
+
 
     # bookings that need client rating from trainer
     pending_rate_client = []
