@@ -431,17 +431,29 @@ def trainer_dashboard(request):
     member_ratings = {}
     try:
         for uid in member_ids:
+           
             try:
                 up = UserProfile.objects.get(user_id=uid)
                 member_ratings[uid] = {
-                    'avg': up.avg_rating,
-                    'count': up.rating_count,
-                    'ratings': list(ClientRating.objects.filter(
-                        profile=up
-                    ).select_related('trainer', 'booking').order_by('-created_at').values(
-                        'stars', 'comment', 'trainer__name', 'created_at'
-                    ))
-                }
+                'avg': up.avg_rating,
+                'count': up.rating_count,
+                'ratings': [
+                {
+                'stars': r['stars'],
+                'comment': r['comment'],
+                'trainer__name': r['trainer__name'],
+                'created_at': r['created_at'].strftime('%b %d, %Y') if r['created_at'] else '',
+            }
+            for r in ClientRating.objects.filter(
+                profile=up
+            ).select_related('trainer', 'booking').order_by('-created_at').values(
+                'stars', 'comment', 'trainer__name', 'created_at'
+            )
+        ]
+    }
+                
+                
+                
             except Exception:
                 member_ratings[uid] = {'avg': None, 'count': 0, 'ratings': []}
     except Exception:
