@@ -1712,7 +1712,7 @@ function previewAndUploadPhoto(input) {
 }
 
 // ── Unread message notification polling ──────────────────
-{% if user.is_authenticated and not user.is_staff %}
+{% if user.is_authenticated and not user.is_superuser %}
 function pollUnread() {
     fetch('{% url "unread_count" %}')
         .then(r => r.json())
