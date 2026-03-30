@@ -1,8 +1,13 @@
-django>=6.0.3
+django>=4.2.0
 pillow>=10.0.0
 gunicorn>=20.1.0
 whitenoise>=6.0.0
 dj-database-url>=2.0.0
 psycopg2-binary>=2.9.0
+<<<<<<< HEAD
 cloudinary>=2.0.0
 django-cloudinary-storage>=2.0.0
+=======
+cloudinary>=1.26.0
+django-cloudinary-storage>=0.3.0
+>>>>>>> 18629128a6dd66a44b78efe13d127fefb2f8de7e
