@@ -4,7 +4,6 @@ import dj_database_url
 
 
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-!m9=q8np472ht$jz2y2y$+4@i80*z_+1-1g6mi%v+5)t-_&%aa')
@@ -90,9 +89,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'fitness', 'static'),
-]
+
 
 MEDIA_URL = '/media/'
 
