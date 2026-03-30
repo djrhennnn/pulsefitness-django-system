@@ -1029,14 +1029,3 @@ def feed_pin_post(request):
     post.is_pinned = not post.is_pinned
     post.save()
     return JsonResponse({'ok': True, 'pinned': post.is_pinned})
-
-@login_required(login_url='/')
-def trainer_dashboard(request):
-    if is_admin(request.user):    return redirect('admin_dashboard')
-    if not is_trainer(request.user): return redirect('member_dashboard')
-    expire_pending_bookings()
-
-    trainer = get_trainer_for_user(request.user)
-    if trainer is None:                      # ← add this
-        return redirect('member_dashboard')
-    ...
