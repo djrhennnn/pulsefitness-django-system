@@ -1842,8 +1842,8 @@ function buildFeedCard(p) {
         ).join('');
         imagesHtml = `<div class="grid ${cols} gap-2 mb-3">${imgs}</div>`;
     } else if (p.image_url) {
-        imagesHtml = `<div class="mb-3 rounded-xl overflow-hidden" style="background:#111;max-height:500px">
-            <img src="${p.image_url}" class="w-full cursor-pointer hover:opacity-90 transition-opacity" style="width:100%;height:500px;object-fit:cover;object-position:center top" onclick="openLightbox('${escHtml(p.image_url)}')" alt="progress photo">
+         imagesHtml = `<div class="mb-3 rounded-xl overflow-hidden flex items-center justify-center" style="background:#111;max-height:450px">
+            <img src="${p.image_url}" class="cursor-pointer hover:opacity-90 transition-opacity" style="max-width:100%;max-height:450px;object-fit:contain;display:block" onclick="openLightbox('${escHtml(p.image_url)}')" alt="progress photo">
         </div>`;
     }
 
