@@ -468,6 +468,9 @@
                 </button>
             </nav>
             <div class="border-t border-white/10 pt-4 space-y-1">
+                <a href="{% url 'analytics' %}" class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 flex items-center gap-3 text-gray-400 transition-colors text-sm">
+                    <i class="fa-solid fa-chart-line w-4" style="color:#00f3ff"></i> Analytics
+                </a>
                 {% if user.is_staff %}
                 <a href="{% url 'admin_dashboard' %}" class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 flex items-center gap-3 text-gray-400 transition-colors text-sm">
                     <i class="fa-solid fa-shield-halved w-4"></i> Admin Panel

@@ -267,3 +267,44 @@ class SiteReview(models.Model):
 
     def __str__(self):
         return f"{self.user.username} — {self.stars}★"
+
+
+# ─── Analytics Models ────────────────────────────────────────
+
+class WeightLog(models.Model):
+    """Client logs their weight over time for progress tracking."""
+    member     = models.ForeignKey(User, on_delete=models.CASCADE, related_name='weight_logs')
+    weight_kg  = models.FloatField()
+    logged_at  = models.DateField(auto_now_add=True)
+    note       = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ['logged_at']
+
+    def __str__(self):
+        return f"{self.member.username}: {self.weight_kg}kg on {self.logged_at}"
+
+
+class FitnessGoal(models.Model):
+    """Client sets a fitness goal."""
+    GOAL_CHOICES = [
+        ('lose_weight',      'Lose Weight'),
+        ('gain_muscle',      'Gain Muscle'),
+        ('maintain_fitness', 'Maintain Fitness'),
+        ('improve_cardio',   'Improve Cardio'),
+        ('increase_strength','Increase Strength'),
+        ('flexibility',      'Improve Flexibility'),
+    ]
+    member          = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fitness_goals')
+    goal_type       = models.CharField(max_length=30, choices=GOAL_CHOICES)
+    target_weight   = models.FloatField(null=True, blank=True)
+    target_date     = models.DateField(null=True, blank=True)
+    is_active       = models.BooleanField(default=True)
+    is_achieved     = models.BooleanField(default=False)
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.member.username}: {self.get_goal_type_display()}"

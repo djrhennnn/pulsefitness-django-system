@@ -1,6 +1,1 @@
-staticfiles/
-static/
-*.png
-*.jpg
-*.jpeg
-media/
+*

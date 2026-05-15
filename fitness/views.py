@@ -438,7 +438,7 @@ def trainer_dashboard(request):
                 'avg': up.avg_rating,
                 'count': up.rating_count,
                 'ratings': [
-                {
+            {
                 'stars': r['stars'],
                 'comment': r['comment'],
                 'trainer__name': r['trainer__name'],
@@ -1041,3 +1041,418 @@ def feed_pin_post(request):
     post.is_pinned = not post.is_pinned
     post.save()
     return JsonResponse({'ok': True, 'pinned': post.is_pinned})
+
+
+# ═══════════════════════════════════════════════════════════
+# ANALYTICS VIEWS
+# ═══════════════════════════════════════════════════════════
+
+from .models import WeightLog, FitnessGoal
+from django.db.models import Count, Avg, Sum, Q
+from datetime import date, timedelta
+import json as _json
+
+
+# ── Analytics pages (template views) ────────────────────
+
+@login_required(login_url='/')
+def analytics_page(request):
+    """Serve the analytics template with the correct role."""
+    if is_admin(request.user):
+        role = 'admin'
+    elif is_trainer(request.user):
+        role = 'trainer'
+    else:
+        role = 'client'
+    return render(request, 'fitness/analytics.html', {'role': role})
+
+
+# ── Client Analytics ──────────────────────────────────────
+
+@login_required(login_url='/')
+def client_analytics(request):
+    """Return analytics data for the logged-in member as JSON."""
+    user = request.user
+    today = date.today()
+    year  = today.year
+
+    # ── Booking / session stats ──────────────────────────
+    all_bookings = BookingRequest.objects.filter(member=user)
+    total_sessions_booked  = all_bookings.aggregate(s=Sum('total_sessions'))['s'] or 0
+    total_sessions_done    = all_bookings.aggregate(s=Sum('sessions_done'))['s'] or 0
+    completion_rate = round((total_sessions_done / total_sessions_booked * 100) if total_sessions_booked else 0, 1)
+
+    # Sessions per month (last 6 months)
+    monthly_sessions = []
+    for i in range(5, -1, -1):
+        m_date = today.replace(day=1) - timedelta(days=i * 28)
+        m = m_date.month
+        y = m_date.year
+        count = ScheduledSession.objects.filter(
+            member=user,
+            session_date__year=y,
+            session_date__month=m,
+            is_done=True
+        ).count()
+        monthly_sessions.append({
+            'month': m_date.strftime('%b %Y'),
+            'sessions': count,
+        })
+
+    # Most active day of week
+    scheduled = ScheduledSession.objects.filter(member=user, is_done=True)
+    day_counts = [0] * 7
+    for s in scheduled:
+        day_counts[s.session_date.weekday()] += 1
+    days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    most_active_day = days[day_counts.index(max(day_counts))] if any(day_counts) else None
+    weekly_attendance = [{'day': days[i], 'sessions': day_counts[i]} for i in range(7)]
+
+    # ── Weight / BMI progress ────────────────────────────
+    weight_logs = list(WeightLog.objects.filter(member=user).order_by('logged_at')
+                       .values('weight_kg', 'logged_at', 'note'))
+    weight_change = None
+    if len(weight_logs) >= 2:
+        weight_change = round(weight_logs[-1]['weight_kg'] - weight_logs[0]['weight_kg'], 1)
+
+    profile = getattr(user, 'profile', None)
+    current_bmi = profile.bmi if profile else None
+
+    # ── Goals ────────────────────────────────────────────
+    goals = list(FitnessGoal.objects.filter(member=user)
+                 .values('id','goal_type','target_weight','target_date','is_active','is_achieved','created_at'))
+    for g in goals:
+        if g['target_date']:
+            g['target_date'] = str(g['target_date'])
+        g['created_at'] = str(g['created_at'])[:10]
+
+    # ── Trainer ratings given ────────────────────────────
+    ratings_given = TrainerRating.objects.filter(member=user).select_related('trainer')
+    trainer_ratings = [{'trainer': r.trainer.name, 'stars': r.stars, 'comment': r.comment} for r in ratings_given]
+
+    # ── Trainer info ─────────────────────────────────────
+    confirmed_bookings = all_bookings.filter(status__in=['confirmed','completed'])
+    trainers_used = list(confirmed_bookings.values_list('trainer__name', flat=True).distinct())
+
+    # ── Upcoming sessions ────────────────────────────────
+    upcoming = ScheduledSession.objects.filter(
+        member=user, session_date__gte=today, is_done=False
+    ).select_related('trainer').order_by('session_date', 'session_time')[:5]
+    upcoming_data = [{'date': str(s.session_date), 'time': str(s.session_time)[:5],
+                      'trainer': s.trainer.name, 'location': s.location} for s in upcoming]
+
+    return JsonResponse({
+        'total_sessions_booked':  total_sessions_booked,
+        'total_sessions_done':    total_sessions_done,
+        'completion_rate':        completion_rate,
+        'monthly_sessions':       monthly_sessions,
+        'weekly_attendance':      weekly_attendance,
+        'most_active_day':        most_active_day,
+        'weight_logs':            [{'date': str(w['logged_at']), 'weight': w['weight_kg'], 'note': w['note']} for w in weight_logs],
+        'weight_change':          weight_change,
+        'current_bmi':            current_bmi,
+        'bmi_category':           profile.bmi_category if profile else None,
+        'goals':                  goals,
+        'trainer_ratings':        trainer_ratings,
+        'trainers_used':          trainers_used,
+        'upcoming_sessions':      upcoming_data,
+        'bookings_by_status': {
+            'pending':   all_bookings.filter(status='pending').count(),
+            'confirmed': all_bookings.filter(status='confirmed').count(),
+            'completed': all_bookings.filter(status='completed').count(),
+            'cancelled': all_bookings.filter(status='cancelled').count(),
+            'expired':   all_bookings.filter(status='expired').count(),
+        },
+    })
+
+
+@login_required(login_url='/')
+@require_POST
+def log_weight(request):
+    """Member logs their current weight."""
+    try:
+        weight = float(request.POST.get('weight_kg', 0))
+        note   = request.POST.get('note', '').strip()
+        if not weight or weight <= 0:
+            return JsonResponse({'error': 'Invalid weight.'}, status=400)
+        log = WeightLog.objects.create(member=request.user, weight_kg=weight, note=note)
+        # Also update profile weight
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        profile.weight_kg = weight
+        profile.save()
+        return JsonResponse({'success': True, 'date': str(log.logged_at), 'weight': weight})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required(login_url='/')
+@require_POST
+def save_goal(request):
+    """Member sets or updates a fitness goal."""
+    try:
+        goal_type     = request.POST.get('goal_type', '').strip()
+        target_weight = request.POST.get('target_weight', '').strip()
+        target_date   = request.POST.get('target_date', '').strip()
+
+        if not goal_type:
+            return JsonResponse({'error': 'Goal type required.'}, status=400)
+
+        # Deactivate previous goals of same type
+        FitnessGoal.objects.filter(member=request.user, goal_type=goal_type, is_active=True).update(is_active=False)
+
+        goal = FitnessGoal.objects.create(
+            member=request.user,
+            goal_type=goal_type,
+            target_weight=float(target_weight) if target_weight else None,
+            target_date=target_date if target_date else None,
+        )
+        return JsonResponse({'success': True, 'goal_id': goal.pk, 'goal_type': goal.get_goal_type_display()})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required(login_url='/')
+@require_POST
+def achieve_goal(request):
+    """Mark a goal as achieved."""
+    try:
+        goal_id = request.POST.get('goal_id')
+        goal = get_object_or_404(FitnessGoal, pk=goal_id, member=request.user)
+        goal.is_achieved = True
+        goal.is_active = False
+        goal.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ── Trainer Analytics ─────────────────────────────────────
+
+@login_required(login_url='/')
+def trainer_analytics(request):
+    """Return analytics data for the logged-in trainer as JSON."""
+    if not is_trainer(request.user):
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    trainer = get_trainer_for_user(request.user)
+    today   = date.today()
+
+    bookings = BookingRequest.objects.filter(trainer=trainer)
+    member_ids = bookings.values_list('member_id', flat=True).distinct()
+    total_clients = member_ids.count()
+
+    # Sessions per month (last 6 months)
+    monthly_sessions = []
+    for i in range(5, -1, -1):
+        m_date = today.replace(day=1) - timedelta(days=i * 28)
+        m, y = m_date.month, m_date.year
+        count = ScheduledSession.objects.filter(
+            trainer=trainer, session_date__year=y, session_date__month=m
+        ).count()
+        done  = ScheduledSession.objects.filter(
+            trainer=trainer, session_date__year=y, session_date__month=m, is_done=True
+        ).count()
+        monthly_sessions.append({'month': m_date.strftime('%b %Y'), 'total': count, 'done': done})
+
+    # Total sessions handled
+    total_scheduled = ScheduledSession.objects.filter(trainer=trainer).count()
+    total_done      = ScheduledSession.objects.filter(trainer=trainer, is_done=True).count()
+    completion_rate = round((total_done / total_scheduled * 100) if total_scheduled else 0, 1)
+
+    # Client attendance: sessions_done / total_sessions per confirmed booking
+    client_data = []
+    for b in bookings.filter(status__in=['confirmed','completed']).select_related('member'):
+        sessions_scheduled = ScheduledSession.objects.filter(booking=b).count()
+        sessions_done      = ScheduledSession.objects.filter(booking=b, is_done=True).count()
+        att_rate = round((sessions_done / sessions_scheduled * 100) if sessions_scheduled else 0)
+        client_data.append({
+            'name':        b.member.get_full_name() or b.member.username,
+            'sessions':    b.total_sessions,
+            'done':        b.sessions_done,
+            'attendance':  att_rate,
+            'status':      b.status,
+            'booking_id':  b.pk,
+        })
+
+    # Inactive clients: confirmed bookings with no sessions in last 14 days
+    two_weeks_ago = today - timedelta(days=14)
+    inactive = []
+    for b in bookings.filter(status='confirmed').select_related('member'):
+        recent = ScheduledSession.objects.filter(
+            booking=b, session_date__gte=two_weeks_ago
+        ).exists()
+        if not recent:
+            inactive.append(b.member.get_full_name() or b.member.username)
+
+    # Ratings received
+    avg_rating  = trainer.avg_rating
+    rating_count = trainer.rating_count
+    rating_breakdown = {}
+    for i in range(1, 6):
+        rating_breakdown[str(i)] = TrainerRating.objects.filter(trainer=trainer, stars=i).count()
+
+    # Upcoming sessions
+    upcoming = ScheduledSession.objects.filter(
+        trainer=trainer, session_date__gte=today, is_done=False
+    ).select_related('member').order_by('session_date', 'session_time')[:8]
+    upcoming_data = [{'date': str(s.session_date), 'time': str(s.session_time)[:5],
+                      'member': s.member.get_full_name() or s.member.username,
+                      'location': s.location} for s in upcoming]
+
+    # Workout plans created
+    plans_count = WorkoutPlan.objects.filter(trainer=trainer).count()
+
+    # Booking status breakdown
+    status_breakdown = {
+        'pending':   bookings.filter(status='pending').count(),
+        'confirmed': bookings.filter(status='confirmed').count(),
+        'completed': bookings.filter(status='completed').count(),
+        'cancelled': bookings.filter(status='cancelled').count(),
+    }
+
+    return JsonResponse({
+        'total_clients':     total_clients,
+        'total_scheduled':   total_scheduled,
+        'total_done':        total_done,
+        'completion_rate':   completion_rate,
+        'monthly_sessions':  monthly_sessions,
+        'client_data':       client_data,
+        'inactive_clients':  inactive,
+        'avg_rating':        avg_rating,
+        'rating_count':      rating_count,
+        'rating_breakdown':  rating_breakdown,
+        'upcoming_sessions': upcoming_data,
+        'plans_count':       plans_count,
+        'status_breakdown':  status_breakdown,
+    })
+
+
+# ── Admin Analytics ───────────────────────────────────────
+
+@login_required(login_url='/')
+def admin_analytics(request):
+    """Return site-wide analytics for admin."""
+    if not is_admin(request.user):
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    today = date.today()
+
+    # Members
+    all_members = User.objects.filter(is_superuser=False, trainer_profile__isnull=True)
+    total_members  = all_members.count()
+    new_this_month = all_members.filter(
+        date_joined__year=today.year, date_joined__month=today.month).count()
+    new_this_week  = all_members.filter(date_joined__gte=today - timedelta(days=7)).count()
+
+    # Registrations per month (last 6)
+    reg_trend = []
+    for i in range(5, -1, -1):
+        m_date = today.replace(day=1) - timedelta(days=i * 28)
+        m, y = m_date.month, m_date.year
+        count = all_members.filter(date_joined__year=y, date_joined__month=m).count()
+        reg_trend.append({'month': m_date.strftime('%b %Y'), 'members': count})
+
+    # Trainers
+    total_trainers    = Trainer.objects.count()
+    available_trainers = Trainer.objects.filter(is_available=True).count()
+
+    # Bookings
+    all_bookings = BookingRequest.objects.all()
+    booking_stats = {
+        'total':     all_bookings.count(),
+        'pending':   all_bookings.filter(status='pending').count(),
+        'confirmed': all_bookings.filter(status='confirmed').count(),
+        'completed': all_bookings.filter(status='completed').count(),
+        'cancelled': all_bookings.filter(status='cancelled').count(),
+        'expired':   all_bookings.filter(status='expired').count(),
+    }
+
+    # Bookings per month (last 6)
+    booking_trend = []
+    for i in range(5, -1, -1):
+        m_date = today.replace(day=1) - timedelta(days=i * 28)
+        m, y = m_date.month, m_date.year
+        count    = all_bookings.filter(requested_at__year=y, requested_at__month=m).count()
+        done     = all_bookings.filter(requested_at__year=y, requested_at__month=m, status='completed').count()
+        booking_trend.append({'month': m_date.strftime('%b %Y'), 'bookings': count, 'completed': done})
+
+    # Sessions
+    all_sessions = ScheduledSession.objects.all()
+    total_sessions_done = all_sessions.filter(is_done=True).count()
+    total_sessions_all  = all_sessions.count()
+
+    # Most popular specialty
+    specialty_counts = {}
+    for t in Trainer.objects.all():
+        label = t.get_specialty_display()
+        booked = BookingRequest.objects.filter(trainer=t).count()
+        specialty_counts[label] = specialty_counts.get(label, 0) + booked
+
+    specialty_data = [{'specialty': k, 'bookings': v} for k, v in
+                      sorted(specialty_counts.items(), key=lambda x: -x[1])]
+
+    # Trainer leaderboard by rating
+    trainer_leaderboard = []
+    for t in Trainer.objects.all():
+        trainer_leaderboard.append({
+            'name':         t.name,
+            'specialty':    t.get_specialty_display(),
+            'avg_rating':   t.avg_rating or 0,
+            'rating_count': t.rating_count,
+            'bookings':     BookingRequest.objects.filter(trainer=t).count(),
+            'sessions_done': ScheduledSession.objects.filter(trainer=t, is_done=True).count(),
+        })
+    trainer_leaderboard.sort(key=lambda x: (-x['avg_rating'], -x['bookings']))
+
+    # Gender distribution of members
+    gender_dist = {}
+    for g, label in [('male','Male'),('female','Female'),('other','Other')]:
+        count = UserProfile.objects.filter(gender=g).count()
+        if count:
+            gender_dist[label] = count
+
+    # Age distribution
+    age_groups = {'Under 20': 0, '20-29': 0, '30-39': 0, '40-49': 0, '50+': 0}
+    for p in UserProfile.objects.exclude(age=None):
+        a = p.age
+        if a < 20:    age_groups['Under 20'] += 1
+        elif a < 30:  age_groups['20-29'] += 1
+        elif a < 40:  age_groups['30-39'] += 1
+        elif a < 50:  age_groups['40-49'] += 1
+        else:         age_groups['50+'] += 1
+    age_data = [{'group': k, 'count': v} for k, v in age_groups.items() if v]
+
+    # Messages
+    total_messages = Message.objects.count()
+    messages_today = Message.objects.filter(sent_at__date=today).count()
+
+    # Site reviews
+    avg_site_rating = SiteReview.objects.aggregate(avg=Avg('stars'))['avg']
+
+    # Peak booking days
+    from django.db.models.functions import ExtractWeekDay
+    day_names = ['', 'Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+    peak_days_qs = (all_bookings
+        .annotate(wd=ExtractWeekDay('requested_at'))
+        .values('wd').annotate(count=Count('id'))
+        .order_by('wd'))
+    peak_days = [{'day': day_names[p['wd']], 'bookings': p['count']} for p in peak_days_qs]
+
+    return JsonResponse({
+        'total_members':       total_members,
+        'new_this_month':      new_this_month,
+        'new_this_week':       new_this_week,
+        'reg_trend':           reg_trend,
+        'total_trainers':      total_trainers,
+        'available_trainers':  available_trainers,
+        'booking_stats':       booking_stats,
+        'booking_trend':       booking_trend,
+        'total_sessions_done': total_sessions_done,
+        'total_sessions_all':  total_sessions_all,
+        'specialty_data':      specialty_data,
+        'trainer_leaderboard': trainer_leaderboard,
+        'gender_dist':         [{'gender': k, 'count': v} for k, v in gender_dist.items()],
+        'age_data':            age_data,
+        'total_messages':      total_messages,
+        'messages_today':      messages_today,
+        'avg_site_rating':     round(avg_site_rating, 1) if avg_site_rating else None,
+        'peak_days':           peak_days,
+    })
