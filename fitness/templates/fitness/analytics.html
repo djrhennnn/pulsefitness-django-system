@@ -1,0 +1,852 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PulseFitness | Analytics</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  body{background:#050505;color:#fff;font-family:'Inter',sans-serif;min-height:100vh}
+  .glass{background:rgba(255,255,255,.04);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.09)}
+  .neon{color:#00f3ff}.neon-purple{color:#b026ff}.neon-green{color:#22c55e}.neon-yellow{color:#fbbf24}
+  .stat-card{background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.1);border-radius:1rem;padding:1.25rem;transition:transform .2s}
+  .stat-card:hover{transform:translateY(-3px)}
+  .chart-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:1rem;padding:1.25rem}
+  .tab-btn{padding:.5rem 1rem;border-radius:.5rem;font-weight:700;font-size:.8rem;cursor:pointer;transition:all .2s}
+  .tab-btn.active{background:#00f3ff;color:#000}
+  .tab-btn:not(.active){background:rgba(255,255,255,.07);color:#9ca3af}
+  .tab-btn:not(.active):hover{background:rgba(255,255,255,.12);color:#fff}
+  .insight{background:rgba(0,243,255,.06);border-left:3px solid #00f3ff;padding:.6rem 1rem;border-radius:0 .5rem .5rem 0;font-size:.83rem;color:#d1fafe}
+  .insight.purple{background:rgba(176,38,255,.06);border-color:#b026ff;color:#e9d5ff}
+  .insight.green{background:rgba(34,197,94,.06);border-color:#22c55e;color:#bbf7d0}
+  .insight.yellow{background:rgba(251,191,36,.06);border-color:#fbbf24;color:#fef3c7}
+  .badge{display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .6rem;border-radius:9999px;font-size:.7rem;font-weight:700}
+  .spinner{width:40px;height:40px;border:3px solid rgba(0,243,255,.2);border-top-color:#00f3ff;border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  canvas{max-height:240px}
+  .progress-bar{height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}
+  .progress-fill{height:100%;border-radius:4px;transition:width .8s ease}
+  ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+  .goal-chip{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .75rem;border-radius:.5rem;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s}
+  .goal-chip.selected{background:#b026ff;color:#fff}
+  .goal-chip:not(.selected){background:rgba(255,255,255,.07);color:#9ca3af;border:1px solid rgba(255,255,255,.1)}
+  .goal-chip:not(.selected):hover{border-color:#b026ff;color:#b026ff}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="sticky top-0 z-40 px-5 py-3 flex items-center justify-between border-b border-white/10" style="background:rgba(5,5,5,.95);backdrop-filter:blur(12px)">
+  <div class="flex items-center gap-3">
+    <a href="{% if role == 'admin' %}{% url 'admin_dashboard' %}{% elif role == 'trainer' %}{% url 'trainer_dashboard' %}{% else %}{% url 'member_dashboard' %}{% endif %}"
+       class="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1">
+      <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">Dashboard</span>
+    </a>
+    <div class="w-px h-5 bg-white/20"></div>
+    <span class="font-display font-bold text-sm tracking-widest" style="color:#00f3ff">
+      <i class="fa-solid fa-chart-line mr-1"></i>ANALYTICS
+    </span>
+  </div>
+  <div class="flex items-center gap-2">
+    {% if role == 'admin' %}
+    <span class="badge" style="background:rgba(239,68,68,.2);color:#f87171;border:1px solid rgba(239,68,68,.3)"><i class="fa-solid fa-shield-halved"></i> Admin</span>
+    {% elif role == 'trainer' %}
+    <span class="badge" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)"><i class="fa-solid fa-dumbbell"></i> Trainer</span>
+    {% else %}
+    <span class="badge" style="background:rgba(0,243,255,.2);color:#00f3ff;border:1px solid rgba(0,243,255,.3)"><i class="fa-solid fa-user"></i> Member</span>
+    {% endif %}
+    <span class="text-gray-400 text-xs hidden sm:block">{{ user.get_full_name|default:user.username }}</span>
+  </div>
+</header>
+
+<div class="max-w-6xl mx-auto px-4 py-7" id="analyticsRoot">
+
+  <!-- Loading state -->
+  <div id="loadingState" class="flex flex-col items-center justify-center py-24 gap-4">
+    <div class="spinner"></div>
+    <p class="text-gray-500 text-sm animate-pulse">Loading analytics…</p>
+  </div>
+
+  <!-- Content (hidden until data loads) -->
+  <div id="analyticsContent" class="hidden">
+
+    <!-- ═══════════ CLIENT ANALYTICS ═══════════ -->
+    {% if role == 'client' %}
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div>
+        <h1 class="font-display text-2xl font-bold">YOUR <span style="color:#00f3ff">ANALYTICS</span></h1>
+        <p class="text-gray-500 text-sm mt-0.5">Track your fitness journey progress</p>
+      </div>
+      <button onclick="document.getElementById('logWeightModal').style.display='flex'"
+        class="px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2"
+        style="background:#00f3ff;color:#000"><i class="fa-solid fa-plus"></i> Log Weight</button>
+    </div>
+
+    <!-- Stats row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="clientStats"></div>
+
+    <!-- Insights -->
+    <div class="space-y-2 mb-6" id="clientInsights"></div>
+
+    <!-- Goals -->
+    <div class="glass rounded-2xl p-5 mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-display font-bold text-base">FITNESS <span style="color:#b026ff">GOALS</span></h3>
+        <button onclick="document.getElementById('goalModal').style.display='flex'"
+          class="text-xs px-3 py-1.5 rounded-lg font-bold" style="background:rgba(176,38,255,.2);color:#b026ff;border:1px solid rgba(176,38,255,.3)">
+          <i class="fa-solid fa-plus mr-1"></i>Set Goal
+        </button>
+      </div>
+      <div id="goalsList" class="space-y-2"></div>
+    </div>
+
+    <!-- Charts grid -->
+    <div class="grid md:grid-cols-2 gap-5 mb-6">
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3 neon"><i class="fa-solid fa-chart-line mr-2"></i>Weight Progress</h4>
+        <canvas id="weightChart"></canvas>
+        <p id="weightEmpty" class="text-center text-gray-600 text-sm py-6 hidden">No weight logs yet. Use the "Log Weight" button to start tracking!</p>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3 neon-purple"><i class="fa-solid fa-calendar-check mr-2"></i>Sessions Per Month</h4>
+        <canvas id="sessionsChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3 neon-yellow"><i class="fa-solid fa-fire mr-2"></i>Weekly Activity</h4>
+        <canvas id="weeklyChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3" style="color:#22c55e"><i class="fa-solid fa-chart-pie mr-2"></i>Booking Status</h4>
+        <canvas id="bookingStatusChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Upcoming sessions -->
+    <div class="glass rounded-2xl p-5">
+      <h3 class="font-display font-bold text-base mb-4">UPCOMING <span style="color:#00f3ff">SESSIONS</span></h3>
+      <div id="upcomingList"></div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════ TRAINER ANALYTICS ═══════════ -->
+    {% if role == 'trainer' %}
+    <div class="mb-6">
+      <h1 class="font-display text-2xl font-bold">TRAINER <span style="color:#b026ff">ANALYTICS</span></h1>
+      <p class="text-gray-500 text-sm mt-0.5">Monitor your clients and session performance</p>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="trainerStats"></div>
+    <div class="space-y-2 mb-6" id="trainerInsights"></div>
+
+    <div class="grid md:grid-cols-2 gap-5 mb-6">
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3 neon-purple"><i class="fa-solid fa-calendar mr-2"></i>Monthly Sessions</h4>
+        <canvas id="trainerSessionsChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3 neon-yellow"><i class="fa-solid fa-star mr-2"></i>Rating Breakdown</h4>
+        <canvas id="ratingChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3 neon"><i class="fa-solid fa-chart-pie mr-2"></i>Booking Status</h4>
+        <canvas id="trainerBookingChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3" style="color:#22c55e"><i class="fa-solid fa-users mr-2"></i>Client Attendance</h4>
+        <canvas id="clientAttendanceChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Client table -->
+    <div class="glass rounded-2xl p-5 mb-6">
+      <h3 class="font-display font-bold text-base mb-4">CLIENT <span style="color:#b026ff">OVERVIEW</span></h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="clientTable">
+          <thead><tr class="border-b border-white/10 text-left">
+            <th class="pb-2 text-gray-400 text-xs">Client</th>
+            <th class="pb-2 text-gray-400 text-xs">Sessions</th>
+            <th class="pb-2 text-gray-400 text-xs">Attendance</th>
+            <th class="pb-2 text-gray-400 text-xs">Status</th>
+          </tr></thead>
+          <tbody id="clientTableBody" class="divide-y divide-white/5"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Upcoming sessions -->
+    <div class="glass rounded-2xl p-5">
+      <h3 class="font-display font-bold text-base mb-4">UPCOMING <span style="color:#00f3ff">SESSIONS</span></h3>
+      <div id="trainerUpcoming"></div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════ ADMIN ANALYTICS ═══════════ -->
+    {% if role == 'admin' %}
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div>
+        <h1 class="font-display text-2xl font-bold">ADMIN <span style="color:#ef4444">ANALYTICS</span></h1>
+        <p class="text-gray-500 text-sm mt-0.5">Site-wide performance overview</p>
+      </div>
+      <div class="text-xs text-gray-500 font-mono px-3 py-1.5 rounded-lg" style="background:rgba(255,255,255,.05)">
+        Last updated: <span id="lastUpdated"></span>
+      </div>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="adminKPIs"></div>
+    <div class="space-y-2 mb-6" id="adminInsights"></div>
+
+    <!-- Charts -->
+    <div class="grid md:grid-cols-2 gap-5 mb-6">
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3 neon"><i class="fa-solid fa-user-plus mr-2"></i>Member Registrations</h4>
+        <canvas id="regTrendChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3 neon-purple"><i class="fa-solid fa-calendar-check mr-2"></i>Monthly Bookings</h4>
+        <canvas id="bookingTrendChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3 neon-yellow"><i class="fa-solid fa-chart-pie mr-2"></i>Bookings by Status</h4>
+        <canvas id="adminBookingStatusChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3" style="color:#fb923c"><i class="fa-solid fa-dumbbell mr-2"></i>Specialty Popularity</h4>
+        <canvas id="specialtyChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3" style="color:#a78bfa"><i class="fa-solid fa-venus-mars mr-2"></i>Gender Distribution</h4>
+        <canvas id="genderChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="font-bold text-sm mb-3" style="color:#34d399"><i class="fa-solid fa-users mr-2"></i>Age Groups</h4>
+        <canvas id="ageChart"></canvas>
+      </div>
+      <div class="chart-box md:col-span-2">
+        <h4 class="font-bold text-sm mb-3" style="color:#f472b6"><i class="fa-solid fa-calendar-week mr-2"></i>Peak Booking Days</h4>
+        <canvas id="peakDaysChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Trainer Leaderboard -->
+    <div class="glass rounded-2xl p-5 mb-6">
+      <h3 class="font-display font-bold text-base mb-4">TRAINER <span style="color:#fbbf24">LEADERBOARD</span></h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="border-b border-white/10 text-left">
+            <th class="pb-2 text-gray-400 text-xs">Trainer</th>
+            <th class="pb-2 text-gray-400 text-xs">Specialty</th>
+            <th class="pb-2 text-gray-400 text-xs">Rating</th>
+            <th class="pb-2 text-gray-400 text-xs">Bookings</th>
+            <th class="pb-2 text-gray-400 text-xs">Sessions Done</th>
+          </tr></thead>
+          <tbody id="trainerLeaderboard" class="divide-y divide-white/5"></tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </div><!-- /analyticsContent -->
+</div>
+
+<!-- ─── Log Weight Modal ─────────────────────────────── -->
+<div id="logWeightModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+  <div class="glass rounded-2xl p-7 w-full max-w-sm mx-4 relative">
+    <button onclick="document.getElementById('logWeightModal').style.display='none'"
+      style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.1rem">✕</button>
+    <h2 class="font-display text-xl font-bold mb-4">LOG <span style="color:#00f3ff">WEIGHT</span></h2>
+    <div class="mb-4">
+      <label class="block text-xs text-gray-400 mb-1">Weight (kg)</label>
+      <input type="number" id="logWeightInput" step="0.1" min="20" max="300"
+        class="w-full px-4 py-3 rounded-lg text-sm" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff" placeholder="e.g. 72.5">
+    </div>
+    <div class="mb-5">
+      <label class="block text-xs text-gray-400 mb-1">Note (optional)</label>
+      <input type="text" id="logWeightNote"
+        class="w-full px-4 py-3 rounded-lg text-sm" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff" placeholder="Morning, after gym, etc.">
+    </div>
+    <button onclick="submitWeight()" class="w-full py-3 font-bold rounded-lg" style="background:#00f3ff;color:#000">
+      <i class="fa-solid fa-save mr-2"></i>SAVE ENTRY
+    </button>
+    <p id="weightMsg" class="text-center text-sm mt-3 hidden"></p>
+  </div>
+</div>
+
+<!-- ─── Set Goal Modal ─────────────────────────────── -->
+<div id="goalModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+  <div class="glass rounded-2xl p-7 w-full max-w-sm mx-4 relative">
+    <button onclick="document.getElementById('goalModal').style.display='none'"
+      style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.1rem">✕</button>
+    <h2 class="font-display text-xl font-bold mb-4">SET <span style="color:#b026ff">GOAL</span></h2>
+    <div class="mb-4">
+      <label class="block text-xs text-gray-400 mb-2">Goal Type</label>
+      <div class="flex flex-wrap gap-2" id="goalTypeButtons">
+        <span class="goal-chip" onclick="selectGoal(this,'lose_weight')">🔥 Lose Weight</span>
+        <span class="goal-chip" onclick="selectGoal(this,'gain_muscle')">💪 Gain Muscle</span>
+        <span class="goal-chip" onclick="selectGoal(this,'maintain_fitness')">⚖️ Maintain</span>
+        <span class="goal-chip" onclick="selectGoal(this,'improve_cardio')">🏃 Cardio</span>
+        <span class="goal-chip" onclick="selectGoal(this,'increase_strength')">🏋️ Strength</span>
+        <span class="goal-chip" onclick="selectGoal(this,'flexibility')">🧘 Flexibility</span>
+      </div>
+      <input type="hidden" id="selectedGoalType">
+    </div>
+    <div class="mb-4">
+      <label class="block text-xs text-gray-400 mb-1">Target Weight (kg, optional)</label>
+      <input type="number" id="goalTargetWeight" step="0.1" min="20" max="300"
+        class="w-full px-4 py-3 rounded-lg text-sm" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff" placeholder="e.g. 65">
+    </div>
+    <div class="mb-5">
+      <label class="block text-xs text-gray-400 mb-1">Target Date (optional)</label>
+      <input type="date" id="goalTargetDate"
+        class="w-full px-4 py-3 rounded-lg text-sm" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff">
+    </div>
+    <button onclick="submitGoal()" class="w-full py-3 font-bold rounded-lg" style="background:#b026ff;color:#fff">
+      <i class="fa-solid fa-bullseye mr-2"></i>SET GOAL
+    </button>
+  </div>
+</div>
+
+<script>
+// ─── Config ───────────────────────────────────────────────
+const ROLE    = '{{ role }}';
+const CSRF    = '{{ csrf_token }}';
+const API_URL = ROLE === 'admin'   ? '{% url "admin_analytics" %}'
+              : ROLE === 'trainer' ? '{% url "trainer_analytics" %}'
+              :                      '{% url "client_analytics" %}';
+
+Chart.defaults.color = '#6b7280';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+
+const CYAN    = '#00f3ff';
+const PURPLE  = '#b026ff';
+const GREEN   = '#22c55e';
+const YELLOW  = '#fbbf24';
+const ORANGE  = '#fb923c';
+const PINK    = '#f472b6';
+const RED     = '#ef4444';
+
+function mkGradient(ctx, color) {
+    const g = ctx.createLinearGradient(0, 0, 0, 220);
+    g.addColorStop(0, color + '55');
+    g.addColorStop(1, color + '00');
+    return g;
+}
+
+// ─── Fetch analytics data ─────────────────────────────────
+fetch(API_URL)
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('analyticsContent').classList.remove('hidden');
+        if (ROLE === 'client')  renderClient(data);
+        if (ROLE === 'trainer') renderTrainer(data);
+        if (ROLE === 'admin')   renderAdmin(data);
+    })
+    .catch(err => {
+        document.getElementById('loadingState').innerHTML =
+            `<div class="text-center text-red-400"><i class="fa-solid fa-triangle-exclamation text-3xl mb-2 block"></i>Failed to load analytics.<br><span class="text-xs text-gray-500">${err.message}</span></div>`;
+    });
+
+// ─────────────────────────────────────────────────────────
+// CLIENT ANALYTICS
+// ─────────────────────────────────────────────────────────
+function renderClient(d) {
+    // Stat cards
+    const stats = [
+        { label:'Sessions Done',   value: d.total_sessions_done, icon:'fa-check-circle', color: CYAN },
+        { label:'Completion Rate', value: d.completion_rate+'%', icon:'fa-chart-line',   color: PURPLE },
+        { label:'Current BMI',     value: d.current_bmi || '—', icon:'fa-weight-scale',  color: YELLOW },
+        { label:'Weight Entries',  value: d.weight_logs.length,  icon:'fa-chart-bar',    color: GREEN },
+    ];
+    document.getElementById('clientStats').innerHTML = stats.map(s => `
+        <div class="stat-card">
+            <div class="flex justify-between items-start mb-3">
+                <span class="text-gray-400 text-xs uppercase tracking-wider">${s.label}</span>
+                <i class="fa-solid ${s.icon} text-sm" style="color:${s.color}"></i>
+            </div>
+            <div class="text-2xl font-bold" style="color:${s.color}">${s.value}</div>
+        </div>`).join('');
+
+    // Insights
+    const ins = [];
+    if (d.total_sessions_done > 0)
+        ins.push({ text: `You've completed <strong>${d.total_sessions_done}</strong> session${d.total_sessions_done > 1 ? 's' : ''} total.`, cls:'' });
+    if (d.most_active_day)
+        ins.push({ text: `Your most active day is <strong>${d.most_active_day}</strong>.`, cls: 'purple' });
+    if (d.weight_change !== null && d.weight_change !== undefined) {
+        const dir = d.weight_change < 0 ? 'decreased' : 'increased';
+        const abs = Math.abs(d.weight_change);
+        ins.push({ text: `Your weight ${dir} by <strong>${abs}kg</strong> since your first log.`, cls: d.weight_change < 0 ? 'green' : 'yellow' });
+    }
+    if (d.bmi_category && d.bmi_category !== 'Unknown')
+        ins.push({ text: `BMI category: <strong>${d.bmi_category}</strong> (${d.current_bmi}).`, cls: d.bmi_category === 'Normal Weight' ? 'green' : 'yellow' });
+    if (d.completion_rate >= 80)
+        ins.push({ text: `Great job! Your session completion rate is <strong>${d.completion_rate}%</strong>.`, cls: 'green' });
+    else if (d.completion_rate > 0)
+        ins.push({ text: `Your session completion rate is <strong>${d.completion_rate}%</strong>. Keep pushing!`, cls: '' });
+
+    document.getElementById('clientInsights').innerHTML = ins.map(i =>
+        `<div class="insight ${i.cls}">${i.text}</div>`).join('');
+
+    // Goals list
+    const goalIcons = {lose_weight:'🔥',gain_muscle:'💪',maintain_fitness:'⚖️',improve_cardio:'🏃',increase_strength:'🏋️',flexibility:'🧘'};
+    const goalNames = {lose_weight:'Lose Weight',gain_muscle:'Gain Muscle',maintain_fitness:'Maintain Fitness',improve_cardio:'Improve Cardio',increase_strength:'Increase Strength',flexibility:'Flexibility'};
+    const activeGoals = d.goals.filter(g => g.is_active && !g.is_achieved);
+    const doneGoals   = d.goals.filter(g => g.is_achieved);
+    let goalsHtml = '';
+    if (!d.goals.length) {
+        goalsHtml = '<p class="text-gray-600 text-sm text-center py-4">No goals set yet. Tap "Set Goal" to start!</p>';
+    } else {
+        goalsHtml = activeGoals.map(g => `
+            <div class="flex items-center gap-3 p-3 rounded-xl" style="background:rgba(176,38,255,.08);border:1px solid rgba(176,38,255,.2)">
+                <span class="text-xl">${goalIcons[g.goal_type]||'🎯'}</span>
+                <div class="flex-1">
+                    <div class="font-bold text-sm">${goalNames[g.goal_type]||g.goal_type}</div>
+                    ${g.target_weight ? `<div class="text-xs text-gray-400">Target: ${g.target_weight}kg</div>` : ''}
+                    ${g.target_date   ? `<div class="text-xs text-gray-400">By: ${g.target_date}</div>` : ''}
+                </div>
+                <button onclick="markGoalDone(${g.id})" class="text-xs px-2 py-1 rounded-lg font-bold hover:opacity-80"
+                    style="background:rgba(34,197,94,.2);color:#22c55e;border:1px solid rgba(34,197,94,.3)">
+                    ✓ Done
+                </button>
+            </div>`).join('');
+        if (doneGoals.length) {
+            goalsHtml += `<div class="text-xs text-gray-600 mt-2 mb-1 font-semibold uppercase">Achieved</div>` +
+                doneGoals.map(g => `
+                    <div class="flex items-center gap-3 p-2 rounded-lg opacity-50" style="background:rgba(255,255,255,.03)">
+                        <span>${goalIcons[g.goal_type]||'🎯'}</span>
+                        <span class="text-sm line-through text-gray-500">${goalNames[g.goal_type]||g.goal_type}</span>
+                        <span class="ml-auto text-xs text-green-400">✓ Achieved</span>
+                    </div>`).join('');
+        }
+    }
+    document.getElementById('goalsList').innerHTML = goalsHtml;
+
+    // Weight chart
+    if (d.weight_logs.length > 0) {
+        const wCtx = document.getElementById('weightChart').getContext('2d');
+        new Chart(wCtx, {
+            type: 'line',
+            data: {
+                labels: d.weight_logs.map(w => w.date),
+                datasets: [{
+                    label: 'Weight (kg)',
+                    data: d.weight_logs.map(w => w.weight),
+                    borderColor: CYAN,
+                    backgroundColor: mkGradient(wCtx, CYAN),
+                    borderWidth: 2, pointRadius: 4, pointBackgroundColor: CYAN,
+                    tension: 0.4, fill: true,
+                }]
+            },
+            options: chartOpts('kg')
+        });
+    } else {
+        document.getElementById('weightChart').style.display = 'none';
+        document.getElementById('weightEmpty').classList.remove('hidden');
+    }
+
+    // Sessions per month
+    const sCtx = document.getElementById('sessionsChart').getContext('2d');
+    new Chart(sCtx, {
+        type: 'bar',
+        data: {
+            labels: d.monthly_sessions.map(m => m.month),
+            datasets: [{
+                label: 'Sessions',
+                data: d.monthly_sessions.map(m => m.sessions),
+                backgroundColor: PURPLE + '99',
+                borderColor: PURPLE,
+                borderWidth: 1.5, borderRadius: 6,
+            }]
+        },
+        options: chartOpts('sessions')
+    });
+
+    // Weekly heatmap / bar
+    const wkCtx = document.getElementById('weeklyChart').getContext('2d');
+    new Chart(wkCtx, {
+        type: 'bar',
+        data: {
+            labels: d.weekly_attendance.map(w => w.day),
+            datasets: [{
+                label: 'Sessions',
+                data: d.weekly_attendance.map(w => w.sessions),
+                backgroundColor: d.weekly_attendance.map(w =>
+                    w.day === d.most_active_day ? YELLOW : YELLOW + '44'),
+                borderColor: YELLOW, borderWidth: 1.5, borderRadius: 6,
+            }]
+        },
+        options: chartOpts('sessions')
+    });
+
+    // Booking status pie
+    const bs = d.bookings_by_status;
+    const bsCtx = document.getElementById('bookingStatusChart').getContext('2d');
+    new Chart(bsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending','Confirmed','Completed','Cancelled','Expired'],
+            datasets: [{
+                data: [bs.pending, bs.confirmed, bs.completed, bs.cancelled, bs.expired],
+                backgroundColor: [YELLOW+'cc', GREEN+'cc', CYAN+'cc', RED+'cc', '#6b7280cc'],
+                borderWidth: 2, borderColor: '#050505',
+            }]
+        },
+        options: { ...chartOpts(), plugins: { legend: { position: 'right', labels: { color:'#9ca3af', font:{size:11} } } } }
+    });
+
+    // Upcoming sessions
+    const ul = document.getElementById('upcomingList');
+    if (!d.upcoming_sessions.length) {
+        ul.innerHTML = '<p class="text-gray-600 text-sm text-center py-4">No upcoming sessions scheduled.</p>';
+    } else {
+        ul.innerHTML = d.upcoming_sessions.map(s => `
+            <div class="flex items-center gap-3 p-3 rounded-xl mb-2" style="background:rgba(0,243,255,.05);border:1px solid rgba(0,243,255,.15)">
+                <div class="w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0" style="background:rgba(0,243,255,.15)">
+                    <span class="font-bold text-sm leading-none" style="color:#00f3ff">${new Date(s.date+'T12:00').getDate()}</span>
+                    <span class="text-xs text-gray-500">${new Date(s.date+'T12:00').toLocaleString('en',{month:'short'})}</span>
+                </div>
+                <div>
+                    <div class="font-bold text-sm">${s.trainer}</div>
+                    <div class="text-xs text-gray-400">${fmt12(s.time)} · ${s.location}</div>
+                </div>
+            </div>`).join('');
+    }
+}
+
+// ─────────────────────────────────────────────────────────
+// TRAINER ANALYTICS
+// ─────────────────────────────────────────────────────────
+function renderTrainer(d) {
+    const stats = [
+        { label:'Total Clients',   value: d.total_clients,   icon:'fa-users',          color: CYAN },
+        { label:'Sessions Done',   value: d.total_done,      icon:'fa-check-circle',   color: GREEN },
+        { label:'Completion Rate', value: d.completion_rate+'%', icon:'fa-chart-line', color: PURPLE },
+        { label:'Avg Rating',      value: d.avg_rating ? d.avg_rating+'★' : '—', icon:'fa-star', color: YELLOW },
+    ];
+    document.getElementById('trainerStats').innerHTML = stats.map(s => `
+        <div class="stat-card">
+            <div class="flex justify-between items-start mb-3">
+                <span class="text-gray-400 text-xs uppercase tracking-wider">${s.label}</span>
+                <i class="fa-solid ${s.icon} text-sm" style="color:${s.color}"></i>
+            </div>
+            <div class="text-2xl font-bold" style="color:${s.color}">${s.value}</div>
+        </div>`).join('');
+
+    const ins = [];
+    if (d.inactive_clients.length)
+        ins.push({ text: `<strong>${d.inactive_clients.length}</strong> client${d.inactive_clients.length > 1 ? 's' : ''} inactive in the last 2 weeks: ${d.inactive_clients.join(', ')}.`, cls: 'yellow' });
+    if (d.total_done > 0)
+        ins.push({ text: `You've conducted <strong>${d.total_done}</strong> sessions with a <strong>${d.completion_rate}%</strong> completion rate.`, cls: '' });
+    if (d.avg_rating)
+        ins.push({ text: `Your average client rating is <strong>${d.avg_rating}★</strong> from ${d.rating_count} review${d.rating_count !== 1 ? 's' : ''}.`, cls: d.avg_rating >= 4 ? 'green' : '' });
+    if (d.plans_count > 0)
+        ins.push({ text: `You've created <strong>${d.plans_count}</strong> workout plan${d.plans_count > 1 ? 's' : ''} for your clients.`, cls: 'purple' });
+    document.getElementById('trainerInsights').innerHTML = ins.map(i => `<div class="insight ${i.cls}">${i.text}</div>`).join('');
+
+    // Monthly sessions chart
+    const tsCtx = document.getElementById('trainerSessionsChart').getContext('2d');
+    new Chart(tsCtx, {
+        type: 'bar',
+        data: {
+            labels: d.monthly_sessions.map(m => m.month),
+            datasets: [
+                { label:'Total', data: d.monthly_sessions.map(m => m.total), backgroundColor: PURPLE+'66', borderColor: PURPLE, borderWidth:1.5, borderRadius:4 },
+                { label:'Done',  data: d.monthly_sessions.map(m => m.done),  backgroundColor: GREEN+'99',  borderColor: GREEN,  borderWidth:1.5, borderRadius:4 },
+            ]
+        },
+        options: chartOpts('sessions')
+    });
+
+    // Rating breakdown
+    const rCtx = document.getElementById('ratingChart').getContext('2d');
+    new Chart(rCtx, {
+        type: 'bar',
+        data: {
+            labels: ['1★','2★','3★','4★','5★'],
+            datasets: [{ label:'Reviews',
+                data: [d.rating_breakdown['1']||0, d.rating_breakdown['2']||0, d.rating_breakdown['3']||0, d.rating_breakdown['4']||0, d.rating_breakdown['5']||0],
+                backgroundColor: [RED+'99',ORANGE+'99',YELLOW+'99',GREEN+'99',CYAN+'99'],
+                borderRadius: 6,
+            }]
+        },
+        options: chartOpts('reviews')
+    });
+
+    // Booking status doughnut
+    const tbCtx = document.getElementById('trainerBookingChart').getContext('2d');
+    new Chart(tbCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending','Confirmed','Completed','Cancelled'],
+            datasets: [{ data: [d.status_breakdown.pending, d.status_breakdown.confirmed, d.status_breakdown.completed, d.status_breakdown.cancelled],
+                backgroundColor: [YELLOW+'cc', GREEN+'cc', CYAN+'cc', RED+'cc'],
+                borderWidth: 2, borderColor: '#050505',
+            }]
+        },
+        options: { ...chartOpts(), plugins: { legend: { position:'right', labels:{ color:'#9ca3af', font:{size:11} } } } }
+    });
+
+    // Client attendance bar
+    const caCtx = document.getElementById('clientAttendanceChart').getContext('2d');
+    const top5 = d.client_data.slice(0, 8);
+    new Chart(caCtx, {
+        type: 'bar',
+        data: {
+            labels: top5.map(c => c.name.split(' ')[0]),
+            datasets: [{ label:'Attendance %',
+                data: top5.map(c => c.attendance),
+                backgroundColor: top5.map(c => c.attendance >= 80 ? GREEN+'99' : c.attendance >= 50 ? YELLOW+'99' : RED+'99'),
+                borderRadius: 6,
+            }]
+        },
+        options: { ...chartOpts('%'), scales: { y: { max: 100, ...axisStyle() }, x: axisStyle() } }
+    });
+
+    // Client table
+    document.getElementById('clientTableBody').innerHTML = d.client_data.map(c => `
+        <tr class="hover:bg-white/5 transition-colors">
+            <td class="py-2 pr-4 font-medium text-sm">${c.name}</td>
+            <td class="py-2 pr-4 text-xs text-gray-400">${c.done}/${c.sessions}</td>
+            <td class="py-2 pr-4">
+                <div class="flex items-center gap-2">
+                    <div class="progress-bar flex-1" style="min-width:60px">
+                        <div class="progress-fill" style="width:${c.attendance}%;background:${c.attendance >= 80 ? GREEN : c.attendance >= 50 ? YELLOW : RED}"></div>
+                    </div>
+                    <span class="text-xs font-bold" style="color:${c.attendance >= 80 ? GREEN : c.attendance >= 50 ? YELLOW : RED}">${c.attendance}%</span>
+                </div>
+            </td>
+            <td class="py-2"><span class="text-xs px-2 py-0.5 rounded-full font-bold"
+                style="background:${c.status==='confirmed'?'rgba(34,197,94,.15)':'rgba(255,255,255,.07)'};color:${c.status==='confirmed'?GREEN:'#9ca3af'}">${c.status.toUpperCase()}</span></td>
+        </tr>`).join('');
+
+    // Upcoming
+    const tu = document.getElementById('trainerUpcoming');
+    if (!d.upcoming_sessions.length) {
+        tu.innerHTML = '<p class="text-gray-600 text-sm text-center py-4">No upcoming sessions.</p>';
+    } else {
+        tu.innerHTML = d.upcoming_sessions.map(s => `
+            <div class="flex items-center gap-3 p-3 rounded-xl mb-2" style="background:rgba(176,38,255,.05);border:1px solid rgba(176,38,255,.15)">
+                <div class="w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0" style="background:rgba(176,38,255,.15)">
+                    <span class="font-bold text-sm leading-none" style="color:#b026ff">${new Date(s.date+'T12:00').getDate()}</span>
+                    <span class="text-xs text-gray-500">${new Date(s.date+'T12:00').toLocaleString('en',{month:'short'})}</span>
+                </div>
+                <div>
+                    <div class="font-bold text-sm">${s.member}</div>
+                    <div class="text-xs text-gray-400">${fmt12(s.time)} · ${s.location}</div>
+                </div>
+            </div>`).join('');
+    }
+}
+
+// ─────────────────────────────────────────────────────────
+// ADMIN ANALYTICS
+// ─────────────────────────────────────────────────────────
+function renderAdmin(d) {
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+
+    const kpis = [
+        { label:'Total Members',   value: d.total_members,   sub: `+${d.new_this_week} this week`,     icon:'fa-users',         color: CYAN },
+        { label:'New This Month',  value: d.new_this_month,  sub: 'registrations',                     icon:'fa-user-plus',     color: GREEN },
+        { label:'Total Trainers',  value: d.total_trainers,  sub: `${d.available_trainers} available`, icon:'fa-dumbbell',      color: PURPLE },
+        { label:'Total Bookings',  value: d.booking_stats.total, sub: `${d.booking_stats.confirmed} active`, icon:'fa-calendar-check', color: YELLOW },
+        { label:'Sessions Done',   value: d.total_sessions_done, sub: `of ${d.total_sessions_all} total`, icon:'fa-check-circle', color: GREEN },
+        { label:'Messages Sent',   value: d.total_messages,  sub: `${d.messages_today} today`,         icon:'fa-comments',      color: CYAN },
+        { label:'Avg Site Rating', value: d.avg_site_rating ? d.avg_site_rating+'★' : '—', sub: 'member satisfaction', icon:'fa-star', color: YELLOW },
+        { label:'Cancellations',   value: d.booking_stats.cancelled, sub: `+${d.booking_stats.expired} expired`, icon:'fa-ban', color: RED },
+    ];
+    document.getElementById('adminKPIs').innerHTML = kpis.slice(0, 4).map(k => `
+        <div class="stat-card">
+            <div class="flex justify-between items-start mb-2">
+                <span class="text-gray-400 text-xs uppercase tracking-wider">${k.label}</span>
+                <i class="fa-solid ${k.icon} text-sm" style="color:${k.color}"></i>
+            </div>
+            <div class="text-2xl font-bold mb-0.5" style="color:${k.color}">${k.value}</div>
+            <div class="text-xs text-gray-500">${k.sub}</div>
+        </div>`).join('');
+
+    // Secondary KPI row
+    const secondRow = document.createElement('div');
+    secondRow.className = 'grid grid-cols-2 md:grid-cols-4 gap-4 mb-6';
+    secondRow.innerHTML = kpis.slice(4).map(k => `
+        <div class="stat-card">
+            <div class="flex justify-between items-start mb-2">
+                <span class="text-gray-400 text-xs uppercase tracking-wider">${k.label}</span>
+                <i class="fa-solid ${k.icon} text-sm" style="color:${k.color}"></i>
+            </div>
+            <div class="text-2xl font-bold mb-0.5" style="color:${k.color}">${k.value}</div>
+            <div class="text-xs text-gray-500">${k.sub}</div>
+        </div>`).join('');
+    document.getElementById('adminKPIs').after(secondRow);
+
+    // Insights
+    const ins = [];
+    if (d.new_this_week > 0) ins.push({ text: `<strong>${d.new_this_week}</strong> new member${d.new_this_week > 1 ? 's' : ''} joined this week.`, cls: 'green' });
+    if (d.booking_stats.pending > 0) ins.push({ text: `<strong>${d.booking_stats.pending}</strong> booking${d.booking_stats.pending > 1 ? 's' : ''} awaiting trainer confirmation.`, cls: 'yellow' });
+    if (d.available_trainers < d.total_trainers) ins.push({ text: `<strong>${d.total_trainers - d.available_trainers}</strong> trainer${(d.total_trainers - d.available_trainers) > 1 ? 's' : ''} currently marked as unavailable.`, cls: '' });
+    if (d.avg_site_rating) ins.push({ text: `Site average rating is <strong>${d.avg_site_rating}★</strong>.`, cls: d.avg_site_rating >= 4 ? 'green' : 'yellow' });
+    document.getElementById('adminInsights').innerHTML = ins.map(i => `<div class="insight ${i.cls}">${i.text}</div>`).join('');
+
+    // Registration trend
+    const rtCtx = document.getElementById('regTrendChart').getContext('2d');
+    new Chart(rtCtx, { type:'line', data:{ labels: d.reg_trend.map(m=>m.month),
+        datasets:[{ label:'Members', data: d.reg_trend.map(m=>m.members), borderColor: CYAN,
+            backgroundColor: mkGradient(rtCtx, CYAN), borderWidth:2, pointRadius:4,
+            pointBackgroundColor: CYAN, tension:0.4, fill:true }]
+    }, options: chartOpts('members') });
+
+    // Booking trend
+    const btCtx = document.getElementById('bookingTrendChart').getContext('2d');
+    new Chart(btCtx, { type:'bar', data:{ labels: d.booking_trend.map(m=>m.month),
+        datasets:[
+            { label:'Total',     data: d.booking_trend.map(m=>m.bookings),  backgroundColor: PURPLE+'66', borderColor: PURPLE, borderWidth:1.5, borderRadius:4 },
+            { label:'Completed', data: d.booking_trend.map(m=>m.completed), backgroundColor: GREEN+'99',  borderColor: GREEN,  borderWidth:1.5, borderRadius:4 },
+        ]
+    }, options: chartOpts('bookings') });
+
+    // Booking status doughnut
+    const absCtx = document.getElementById('adminBookingStatusChart').getContext('2d');
+    const bs = d.booking_stats;
+    new Chart(absCtx, { type:'doughnut', data:{ labels:['Pending','Confirmed','Completed','Cancelled','Expired'],
+        datasets:[{ data:[bs.pending, bs.confirmed, bs.completed, bs.cancelled, bs.expired],
+            backgroundColor:[YELLOW+'cc', GREEN+'cc', CYAN+'cc', RED+'cc', '#6b7280cc'],
+            borderWidth:2, borderColor:'#050505' }]
+    }, options:{ ...chartOpts(), plugins:{ legend:{ position:'right', labels:{ color:'#9ca3af', font:{size:11} } } } } });
+
+    // Specialty popularity
+    const spCtx = document.getElementById('specialtyChart').getContext('2d');
+    new Chart(spCtx, { type:'bar', data:{ labels: d.specialty_data.map(s=>s.specialty),
+        datasets:[{ label:'Bookings', data: d.specialty_data.map(s=>s.bookings),
+            backgroundColor:[CYAN+'99', PURPLE+'99', GREEN+'99', YELLOW+'99'],
+            borderRadius:6 }]
+    }, options: chartOpts('bookings') });
+
+    // Gender pie
+    const gdCtx = document.getElementById('genderChart').getContext('2d');
+    new Chart(gdCtx, { type:'doughnut', data:{ labels: d.gender_dist.map(g=>g.gender),
+        datasets:[{ data: d.gender_dist.map(g=>g.count),
+            backgroundColor:[CYAN+'cc', PINK+'cc', PURPLE+'cc'],
+            borderWidth:2, borderColor:'#050505' }]
+    }, options:{ ...chartOpts(), plugins:{ legend:{ position:'right', labels:{ color:'#9ca3af', font:{size:11} } } } } });
+
+    // Age bar
+    const agCtx = document.getElementById('ageChart').getContext('2d');
+    new Chart(agCtx, { type:'bar', data:{ labels: d.age_data.map(a=>a.group),
+        datasets:[{ label:'Members', data: d.age_data.map(a=>a.count),
+            backgroundColor: GREEN+'99', borderColor: GREEN, borderWidth:1.5, borderRadius:6 }]
+    }, options: chartOpts('members') });
+
+    // Peak days
+    const pdCtx = document.getElementById('peakDaysChart').getContext('2d');
+    new Chart(pdCtx, { type:'bar', data:{ labels: d.peak_days.map(p=>p.day),
+        datasets:[{ label:'Bookings', data: d.peak_days.map(p=>p.bookings),
+            backgroundColor: d.peak_days.map((p,i) =>
+                p.bookings === Math.max(...d.peak_days.map(x=>x.bookings)) ? PINK+'cc' : PINK+'44'),
+            borderRadius:6 }]
+    }, options: chartOpts('bookings') });
+
+    // Trainer leaderboard
+    document.getElementById('trainerLeaderboard').innerHTML = d.trainer_leaderboard.map((t,i) => `
+        <tr class="hover:bg-white/5 transition-colors">
+            <td class="py-2 pr-4">
+                <div class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style="background:${i===0?'rgba(251,191,36,.3)':i===1?'rgba(156,163,175,.2)':'rgba(255,255,255,.07)'};color:${i===0?YELLOW:i===1?'#d1d5db':'#6b7280'}">${i+1}</span>
+                    <span class="font-medium text-sm">${t.name}</span>
+                </div>
+            </td>
+            <td class="py-2 pr-4 text-xs text-gray-400">${t.specialty}</td>
+            <td class="py-2 pr-4">
+                <span class="font-bold text-sm" style="color:${YELLOW}">${t.avg_rating > 0 ? t.avg_rating+'★' : '—'}</span>
+                <span class="text-xs text-gray-500 ml-1">(${t.rating_count})</span>
+            </td>
+            <td class="py-2 pr-4 text-sm">${t.bookings}</td>
+            <td class="py-2 text-sm text-gray-300">${t.sessions_done}</td>
+        </tr>`).join('');
+}
+
+// ─── Chart helpers ────────────────────────────────────────
+function axisStyle() {
+    return { grid: { color:'rgba(255,255,255,.05)' }, ticks: { color:'#6b7280', font:{size:11} } };
+}
+
+function chartOpts(unit) {
+    return {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { display: false }, tooltip: {
+            backgroundColor:'rgba(10,10,10,.9)', borderColor:'rgba(255,255,255,.1)',
+            borderWidth:1, padding:10, titleColor:'#fff', bodyColor:'#9ca3af',
+            callbacks: unit ? { label: ctx => ` ${ctx.parsed.y} ${unit}` } : {}
+        }},
+        scales: { x: axisStyle(), y: { ...axisStyle(), beginAtZero: true } }
+    };
+}
+
+function fmt12(t) {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+}
+
+// ─── Weight logging ───────────────────────────────────────
+function submitWeight() {
+    const w = document.getElementById('logWeightInput').value;
+    const n = document.getElementById('logWeightNote').value;
+    if (!w) { showMsg('weightMsg','Please enter a weight.','#f87171'); return; }
+    const fd = new FormData();
+    fd.append('weight_kg', w); fd.append('note', n); fd.append('csrfmiddlewaretoken', CSRF);
+    fetch('{% url "log_weight" %}', { method:'POST', body:fd })
+        .then(r=>r.json())
+        .then(d => {
+            if (d.success) {
+                showMsg('weightMsg','Weight logged! Refreshing…','#22c55e');
+                setTimeout(() => location.reload(), 1200);
+            } else showMsg('weightMsg', d.error||'Failed.','#f87171');
+        }).catch(() => showMsg('weightMsg','Network error.','#f87171'));
+}
+
+// ─── Goal management ─────────────────────────────────────
+let _selGoal = '';
+function selectGoal(el, type) {
+    _selGoal = type;
+    document.getElementById('selectedGoalType').value = type;
+    document.querySelectorAll('.goal-chip').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+function submitGoal() {
+    if (!_selGoal) { alert('Please select a goal type.'); return; }
+    const fd = new FormData();
+    fd.append('goal_type', _selGoal);
+    fd.append('target_weight', document.getElementById('goalTargetWeight').value);
+    fd.append('target_date', document.getElementById('goalTargetDate').value);
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fetch('{% url "save_goal" %}', { method:'POST', body:fd })
+        .then(r=>r.json())
+        .then(d => {
+            if (d.success) { document.getElementById('goalModal').style.display='none'; location.reload(); }
+            else alert(d.error||'Failed.');
+        }).catch(() => alert('Network error.'));
+}
+
+function markGoalDone(id) {
+    const fd = new FormData();
+    fd.append('goal_id', id); fd.append('csrfmiddlewaretoken', CSRF);
+    fetch('{% url "achieve_goal" %}', { method:'POST', body:fd })
+        .then(r=>r.json())
+        .then(d => { if (d.success) location.reload(); })
+        .catch(() => {});
+}
+
+function showMsg(id, msg, color) {
+    const el = document.getElementById(id);
+    el.textContent = msg; el.style.color = color; el.classList.remove('hidden');
+}
+</script>
+</body>
+</html>

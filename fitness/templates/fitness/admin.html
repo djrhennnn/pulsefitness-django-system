@@ -85,8 +85,19 @@
             <button onclick="showSection('messages')" id="snav-messages" class="sidebar-link w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
                 <i class="fa-solid fa-comments w-4"></i>Messages
             </button>
+            <button onclick="showSection('reports')" id="snav-reports" class="sidebar-link w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-sm font-medium text-gray-400">
+                <span class="relative" style="display:inline-block;width:1rem">
+                    <i class="fa-solid fa-flag w-4"></i>
+                    {% if reported_count > 0 %}<span style="position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:#ef4444;border:2px solid #050505"></span>{% endif %}
+                </span>
+                Reports
+                {% if reported_count > 0 %}<span class="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold" style="background:#ef4444;color:#fff">{{ reported_count }}</span>{% endif %}
+            </button>
         </nav>
         <div class="pt-4 border-t border-white/10">
+            <a href="{% url 'analytics' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-gray-400 transition-colors mb-1">
+                <i class="fa-solid fa-chart-line w-4" style="color:#00f3ff"></i>Analytics
+            </a>
             <a href="/django-admin/" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-xs text-gray-500 transition-colors">
                 <i class="fa-solid fa-screwdriver-wrench w-4"></i>Django Admin
             </a>
@@ -275,6 +286,9 @@
                     <button onclick="filterAdminBookings('pending')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="pending">Pending ({{ pending_count }})</button>
                     <button onclick="filterAdminBookings('confirmed')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="confirmed">Confirmed ({{ confirmed_count }})</button>
                     <button onclick="filterAdminBookings('cancelled')" class="admin-booking-filter px-3 py-1 rounded-full text-xs font-bold" style="background:rgba(255,255,255,.1)" data-f="cancelled">Cancelled ({{ cancelled_count }})</button>
+                    <input type="text" id="adminBookingSearch" oninput="filterAdminBookingsBySearch(this.value)"
+                        placeholder="Search by member or trainer…"
+                        class="px-3 py-1.5 rounded-lg text-xs ml-auto" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;width:220px">
                 </div>
             </div>
 
@@ -314,6 +328,67 @@
             <div class="text-center py-16 text-gray-500">
                 <i class="fa-solid fa-calendar-xmark text-5xl mb-4 block"></i>
                 <p>No bookings yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ── REPORTS MONITOR ── -->
+        <div id="section-reports" class="admin-section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="font-display text-xl font-bold">REPORTED <span class="text-gradient">POSTS</span></h2>
+                    <p class="text-gray-500 text-sm mt-0.5">Review and act on flagged content from the community</p>
+                </div>
+            </div>
+            {% if reported_posts %}
+            <div class="space-y-4">
+                {% for report in reported_posts %}
+                <div class="glass-card p-5 rounded-xl" id="report-row-{{ report.id }}">
+                    <div class="flex flex-wrap justify-between items-start gap-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                <span class="text-xs px-2 py-0.5 rounded-full font-bold" style="background:rgba(239,68,68,.2);color:#f87171;border:1px solid rgba(239,68,68,.3)">
+                                    <i class="fa-solid fa-flag mr-1"></i>{{ report.get_reason_display }}
+                                </span>
+                                <span class="text-xs text-gray-500">Reported by {{ report.reporter.get_full_name|default:report.reporter.username }}</span>
+                                <span class="text-xs text-gray-600">· {{ report.created_at|date:"M d, Y g:i A" }}</span>
+                                {% if report.is_reviewed %}<span class="text-xs px-2 py-0.5 rounded-full font-bold" style="background:rgba(34,197,94,.15);color:#22c55e">Reviewed</span>{% endif %}
+                            </div>
+                            <div class="p-3 rounded-lg mb-2" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">
+                                <div class="text-xs text-gray-400 mb-1">
+                                    Post by <strong class="text-white">{{ report.post.author.get_full_name|default:report.post.author.username }}</strong>
+                                    · {{ report.post.created_at|date:"M d, Y" }}
+                                </div>
+                                {% if report.post.caption %}
+                                <p class="text-sm text-gray-300">{{ report.post.caption|truncatechars:200 }}</p>
+                                {% endif %}
+                            </div>
+                            {% if report.detail %}
+                            <p class="text-xs text-gray-500 italic">"{{ report.detail }}"</p>
+                            {% endif %}
+                        </div>
+                        {% if not report.is_reviewed %}
+                        <div class="flex gap-2 flex-shrink-0">
+                            <button onclick="adminHandleReport({{ report.id }}, 'dismiss')"
+                                class="px-3 py-1.5 rounded-lg text-xs font-bold hover:opacity-80"
+                                style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)">
+                                <i class="fa-solid fa-check mr-1"></i>Dismiss
+                            </button>
+                            <button onclick="adminHandleReport({{ report.id }}, 'delete')"
+                                class="px-3 py-1.5 rounded-lg text-xs font-bold hover:opacity-80"
+                                style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)">
+                                <i class="fa-solid fa-trash mr-1"></i>Delete Post
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-16 text-gray-500">
+                <i class="fa-solid fa-flag text-5xl mb-4 block opacity-30"></i>
+                <p>No reported posts. Community is clean! 🎉</p>
             </div>
             {% endif %}
         </div>
@@ -466,6 +541,33 @@ function adminUpdateStatus(id, status) {
             }
         })
         .catch(() => showToast('Network error.', 'error'));
+}
+
+// ── Filter bookings by search text ───────────────────────
+function filterAdminBookingsBySearch(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('.admin-booking-row').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+// ── Admin report handling ─────────────────────────────────
+async function adminHandleReport(reportId, action) {
+    const label = action === 'delete' ? 'delete the post' : 'dismiss this report';
+    if (!confirm(`Are you sure you want to ${label}?`)) return;
+    try {
+        const res = await fetch('/admin-panel/dismiss-report/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({ report_id: reportId, action })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            showToast(action === 'delete' ? 'Post deleted.' : 'Report dismissed.', 'success');
+            const row = document.getElementById(`report-row-${reportId}`);
+            if (row) row.remove();
+        } else showToast(data.error || 'Failed.', 'error');
+    } catch(e) { showToast('Network error.', 'error'); }
 }
 
 // ── Filter messages ──────────────────────────────────────

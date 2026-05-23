@@ -4,7 +4,7 @@ from django.db.models import Avg
 
 
 class UserProfile(models.Model):
-    GENDER_CHOICES = [('male','Male'),('female','Female'),('other','Other')]
+    GENDER_CHOICES = [('male','Male'),('female','Female'),('other','Other'),('prefer_not','Prefer not to say')]
 
     user       = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     age        = models.PositiveIntegerField(null=True, blank=True)
@@ -65,6 +65,7 @@ class Trainer(models.Model):
     bio          = models.TextField(blank=True)
     is_available = models.BooleanField(default=True)
     photo        = models.ImageField(upload_to='trainers/', null=True, blank=True)
+    hourly_rate  = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, help_text='Session rate in PHP (0 = free with membership)')
 
     def __str__(self):
         return self.name
@@ -176,6 +177,8 @@ class WorkoutExercise(models.Model):
     sets         = models.PositiveIntegerField(default=3)
     reps         = models.CharField(max_length=50, blank=True)
     duration_min = models.FloatField(null=True, blank=True)
+    video_url    = models.URLField(blank=True, help_text='YouTube or demo video URL for this exercise')
+    image_url    = models.URLField(blank=True, help_text='Demo image URL for this exercise')
 
     class Meta:
         ordering = ['order']
@@ -267,3 +270,68 @@ class SiteReview(models.Model):
 
     def __str__(self):
         return f"{self.user.username} — {self.stars}★"
+
+
+# ─── Analytics Models ────────────────────────────────────────
+
+class WeightLog(models.Model):
+    """Client logs their weight over time for progress tracking."""
+    member     = models.ForeignKey(User, on_delete=models.CASCADE, related_name='weight_logs')
+    weight_kg  = models.FloatField()
+    logged_at  = models.DateField(auto_now_add=True)
+    note       = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ['logged_at']
+
+    def __str__(self):
+        return f"{self.member.username}: {self.weight_kg}kg on {self.logged_at}"
+
+
+class FitnessGoal(models.Model):
+    """Client sets a fitness goal."""
+    GOAL_CHOICES = [
+        ('lose_weight',      'Lose Weight'),
+        ('gain_muscle',      'Gain Muscle'),
+        ('maintain_fitness', 'Maintain Fitness'),
+        ('improve_cardio',   'Improve Cardio'),
+        ('increase_strength','Increase Strength'),
+        ('flexibility',      'Improve Flexibility'),
+    ]
+    member          = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fitness_goals')
+    goal_type       = models.CharField(max_length=30, choices=GOAL_CHOICES)
+    target_weight   = models.FloatField(null=True, blank=True)
+    target_date     = models.DateField(null=True, blank=True)
+    is_active       = models.BooleanField(default=True)
+    is_achieved     = models.BooleanField(default=False)
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.member.username}: {self.get_goal_type_display()}"
+
+
+class PostReport(models.Model):
+    """A user reports a progress post for moderation."""
+    REASON_CHOICES = [
+        ('spam',          'Spam or Advertising'),
+        ('inappropriate', 'Inappropriate Content'),
+        ('harassment',    'Harassment or Bullying'),
+        ('misinformation','Misinformation'),
+        ('other',         'Other'),
+    ]
+    post       = models.ForeignKey('ProgressPost', on_delete=models.CASCADE, related_name='reports')
+    reporter   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='post_reports')
+    reason     = models.CharField(max_length=20, choices=REASON_CHOICES)
+    detail     = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_reviewed = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('post', 'reporter')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Report on post #{self.post_id} by {self.reporter.username}"

@@ -51,6 +51,8 @@
         .rating-star-empty{color:#4b5563}
         .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center}
         .notif-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#ef4444;border:2px solid #0a0a0a;animation:pulse 2s infinite}
+        @keyframes cmtPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+        @keyframes newCommentSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
     </style>
 </head>
@@ -140,9 +142,10 @@
                         <div>
                             <label class="form-label">Gender</label>
                             <select name="gender" class="form-input w-full px-4 py-3 rounded-lg">
-                                <option value="male"   {% if reg_gender == 'male'   %}selected{% endif %}>Male</option>
-                                <option value="female" {% if reg_gender == 'female' %}selected{% endif %}>Female</option>
-                                <option value="other"  {% if reg_gender == 'other'  %}selected{% endif %}>Other</option>
+                                <option value="male"        {% if reg_gender == 'male'        %}selected{% endif %}>Male</option>
+                                <option value="female"     {% if reg_gender == 'female'     %}selected{% endif %}>Female</option>
+                                <option value="other"      {% if reg_gender == 'other'      %}selected{% endif %}>Other</option>
+                                <option value="prefer_not" {% if reg_gender == 'prefer_not' %}selected{% endif %}>Prefer not to say</option>
                             </select>
                         </div>
                     </div>
@@ -468,6 +471,9 @@
                 </button>
             </nav>
             <div class="border-t border-white/10 pt-4 space-y-1">
+                <a href="{% url 'analytics' %}" class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 flex items-center gap-3 text-gray-400 transition-colors text-sm">
+                    <i class="fa-solid fa-chart-line w-4" style="color:#00f3ff"></i> Analytics
+                </a>
                 {% if user.is_staff %}
                 <a href="{% url 'admin_dashboard' %}" class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 flex items-center gap-3 text-gray-400 transition-colors text-sm">
                     <i class="fa-solid fa-shield-halved w-4"></i> Admin Panel
@@ -806,6 +812,18 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ── Trending & Pre-Made Routines ── -->
+                <div class="mt-8">
+                    <div class="flex items-center gap-3 mb-4">
+                        <h3 class="font-display text-lg font-bold">TRENDING <span style="color:#fbbf24">ROUTINES</span></h3>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-bold" style="background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)">🔥 Popular</span>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-4 mb-8" id="trendingRoutines"></div>
+
+                    <h3 class="font-display text-lg font-bold mb-4">BEGINNER <span style="color:#22c55e">PROGRAMS</span></h3>
+                    <div class="grid md:grid-cols-2 gap-4" id="beginnerPrograms"></div>
+                </div>
             </div>
 
             <!-- ── MY TRAINER PLANS ── -->
@@ -852,7 +870,13 @@
 
             <!-- ── MESSAGES ── -->
             <div id="section-messages" class="dash-section hidden">
-                <h2 class="font-display text-2xl font-bold mb-6">MESSAGES <span style="color:#b026ff">& CHATS</span></h2>
+                <h2 class="font-display text-2xl font-bold mb-4">MESSAGES <span style="color:#b026ff">& CHATS</span></h2>
+                <div class="mb-5 p-3 rounded-xl flex items-start gap-3" style="background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.25)">
+                    <i class="fa-solid fa-triangle-exclamation text-yellow-400 mt-0.5 flex-shrink-0"></i>
+                    <p class="text-xs text-yellow-200 leading-relaxed">
+                        <strong class="text-yellow-400">Privacy Notice:</strong> Chats between you and your trainer may be reviewed by gym administrators for safety and quality assurance purposes. Please keep conversations professional and relevant to your training.
+                    </p>
+                </div>
                 {% if bookings %}
                 <div class="space-y-3">
                     {% for b in bookings %}
@@ -989,9 +1013,10 @@
                                 <div>
                                     <label class="form-label">Gender</label>
                                     <select name="gender" id="profileGender" class="form-input w-full px-4 py-3 rounded-lg">
-                                        <option value="male" {% if profile.gender == 'male' %}selected{% endif %}>Male</option>
-                                        <option value="female" {% if profile.gender == 'female' %}selected{% endif %}>Female</option>
-                                        <option value="other" {% if profile.gender == 'other' %}selected{% endif %}>Other</option>
+                                        <option value="male"        {% if profile.gender == 'male'        %}selected{% endif %}>Male</option>
+                                        <option value="female"      {% if profile.gender == 'female'      %}selected{% endif %}>Female</option>
+                                        <option value="other"       {% if profile.gender == 'other'       %}selected{% endif %}>Other</option>
+                                        <option value="prefer_not"  {% if profile.gender == 'prefer_not'  %}selected{% endif %}>Prefer not to say</option>
                                     </select>
                                 </div>
                                 <div>
@@ -1080,6 +1105,13 @@
             </div>
             <p class="text-gray-400 text-sm mb-5 ml-8" id="bookModalTrainerName"></p>
             <input type="hidden" id="bookModalTrainerId">
+            <div id="trainerPriceDisplay" class="hidden mb-4 p-3 rounded-xl" style="background:rgba(0,243,255,.07);border:1px solid rgba(0,243,255,.2)">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-gray-400">Session Rate</span>
+                    <span class="font-bold text-sm" id="trainerRateLabel" style="color:#00f3ff"></span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1" id="trainerRateNote"></p>
+            </div>
             <div class="mb-4">
                 <label class="form-label">Number of Sessions</label>
                 <div class="flex items-center gap-3">
@@ -1115,7 +1147,7 @@
                 <textarea id="bookNotes" class="form-input w-full px-4 py-3 rounded-lg text-sm" rows="2" placeholder="Any goals, injuries, or preferences..."></textarea>
             </div>
             <button onclick="goToStep2()" class="w-full py-3 font-bold rounded-lg flex items-center justify-center gap-2" style="background:#00f3ff;color:#000">
-                NEXT: PICK DATES <i class="fa-solid fa-arrow-right"></i>
+                Next <i class="fa-solid fa-arrow-right"></i>
             </button>
         </div>
 
@@ -1197,6 +1229,17 @@ function showSection(name) {
     document.querySelectorAll('.dash-section').forEach(s => s.classList.add('hidden'));
     const target = document.getElementById('section-' + name);
     if (target) target.classList.remove('hidden');
+    // Start/stop feed poller based on active section
+    if (name === 'feed') {
+        _lastPollTime = Date.now();
+        startFeedPoller();
+    } else {
+        stopFeedPoller();
+    }
+    // Render trending routines when workouts section opens
+    if (name === 'workouts') {
+        renderTrendingRoutines();
+    }
 
     document.querySelectorAll('.dash-nav').forEach(b => {
         b.classList.remove('active-nav');
@@ -1711,6 +1754,206 @@ function previewAndUploadPhoto(input) {
         .catch(() => showToast('Upload failed.', 'error'));
 }
 
+// ── Report Post ─────────────────────────────────────────
+function openReportModal(postId) {
+    document.getElementById('reportPostId').value = postId;
+    document.querySelectorAll('input[name="reportReason"]').forEach(r => r.checked = false);
+    document.getElementById('reportDetail').value = '';
+    document.getElementById('reportPostModal').style.display = 'flex';
+}
+
+async function submitReport() {
+    const postId  = document.getElementById('reportPostId').value;
+    const reason  = document.querySelector('input[name="reportReason"]:checked')?.value;
+    const detail  = document.getElementById('reportDetail').value.trim();
+    if (!reason) { showToast('Please select a reason.', 'error'); return; }
+    try {
+        const res = await fetch('/feed/report/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({ post_id: postId, reason, detail })
+        });
+        const data = await res.json();
+        document.getElementById('reportPostModal').style.display = 'none';
+        if (data.ok) showToast('Report submitted. Our team will review it.', 'success');
+        else showToast(data.error || 'Could not submit report.', 'error');
+    } catch(e) { showToast('Network error.', 'error'); }
+}
+
+// ── Trainer Pricing in Booking Modal ────────────────────
+function openBookModal(id, name) {
+    document.getElementById('bookModalTrainerId').value = id;
+    document.getElementById('bookModalTrainerName').textContent = 'Booking with ' + name;
+    document.getElementById('bookSessions').value = 1;
+    document.getElementById('bookNotes').value = '';
+    _selectedDates = [];
+    _needDates = 1;
+    // Hide price until loaded
+    document.getElementById('trainerPriceDisplay').classList.add('hidden');
+    document.getElementById('bookStep1').classList.remove('hidden');
+    document.getElementById('bookStep2').classList.add('hidden');
+    document.getElementById('bookModal').classList.remove('hidden');
+    // Fetch pricing
+    fetch(`/trainer/booked-slots/${id}/`)
+        .then(r => r.json())
+        .then(d => {
+            const priceBox  = document.getElementById('trainerPriceDisplay');
+            const rateLabel = document.getElementById('trainerRateLabel');
+            const rateNote  = document.getElementById('trainerRateNote');
+            if (d.rate !== null && d.rate !== undefined) {
+                if (d.rate === 0 || d.rate === '0.00') {
+                    rateLabel.textContent = 'FREE';
+                    rateLabel.style.color = '#22c55e';
+                    rateNote.textContent  = 'Included with your membership';
+                } else {
+                    rateLabel.textContent = '₱' + parseFloat(d.rate).toLocaleString('en-PH', {minimumFractionDigits:2});
+                    rateLabel.style.color = '#00f3ff';
+                    rateNote.textContent  = 'Per session · Payment arrangements with trainer';
+                }
+                priceBox.classList.remove('hidden');
+            }
+        }).catch(() => {});
+}
+
+// ── Trending Routines Data ────────────────────────────────
+const TRENDING_ROUTINES = [
+    {
+        title: '7-Minute HIIT Blast',
+        tag: '🔥 Most Popular',
+        tagColor: '#ef4444',
+        time: '7 min', level: 'All Levels',
+        desc: 'High-intensity intervals that torch calories fast — no equipment needed.',
+        exercises: [
+            {n:'Jumping Jacks', sets:1, r:'45 sec'},
+            {n:'Burpees', sets:1, r:'30 sec'},
+            {n:'High Knees', sets:1, r:'45 sec'},
+            {n:'Push-ups', sets:1, r:'30 sec'},
+            {n:'Mountain Climbers', sets:1, r:'45 sec'},
+            {n:'Jump Squats', sets:1, r:'30 sec'},
+        ],
+        note: 'Rest 10 seconds between exercises. Repeat circuit 2× for 14 min.'
+    },
+    {
+        title: 'Full-Body Strength',
+        tag: '💪 Trainer Favourite',
+        tagColor: '#b026ff',
+        time: '45 min', level: 'Intermediate',
+        desc: 'Compound lifts targeting all major muscle groups for maximum strength gains.',
+        exercises: [
+            {n:'Barbell Squat', sets:4, r:'8-10 reps'},
+            {n:'Bench Press', sets:4, r:'8-10 reps'},
+            {n:'Deadlift', sets:3, r:'6-8 reps'},
+            {n:'Pull-ups', sets:3, r:'8 reps'},
+            {n:'Overhead Press', sets:3, r:'10 reps'},
+        ],
+        note: 'Rest 90 seconds between sets. Focus on controlled form over speed.'
+    },
+    {
+        title: 'Core & Abs Sculptor',
+        tag: '⚡ Quick Results',
+        tagColor: '#fbbf24',
+        time: '20 min', level: 'Beginner–Intermediate',
+        desc: 'Targeted core work to build a strong, stable midsection.',
+        exercises: [
+            {n:'Plank Hold', sets:3, r:'45 sec'},
+            {n:'Crunches', sets:3, r:'20 reps'},
+            {n:'Leg Raises', sets:3, r:'15 reps'},
+            {n:'Russian Twists', sets:3, r:'20 reps'},
+            {n:'Dead Bug', sets:3, r:'10 each side'},
+        ],
+        note: 'Minimal rest (20 sec) to keep core engaged throughout.'
+    },
+];
+
+const BEGINNER_PROGRAMS = [
+    {
+        title: 'Week 1: Foundation',
+        emoji: '🏗️',
+        color: '#22c55e',
+        desc: 'Build base fitness and movement patterns. Perfect if you're just starting out.',
+        days: ['Monday: Upper Body Basics','Wednesday: Lower Body Basics','Friday: Core & Cardio'],
+        tip: 'Focus on form, not weight. Move slowly and breathe through each rep.',
+    },
+    {
+        title: 'Cardio Starter Plan',
+        emoji: '🏃',
+        color: '#00f3ff',
+        desc: '4-week progressive cardio plan that builds endurance from scratch.',
+        days: ['Week 1: 15 min walk/jog intervals','Week 2: 20 min continuous jog','Week 3: 25 min steady state','Week 4: 30 min + hills'],
+        tip: 'Aim for a pace where you can still hold a short conversation.',
+    },
+];
+
+function renderTrendingRoutines() {
+    const container = document.getElementById('trendingRoutines');
+    const bgPrograms = document.getElementById('beginnerPrograms');
+    if (!container) return;
+
+    container.innerHTML = TRENDING_ROUTINES.map(r => `
+        <div class="glass-card rounded-2xl overflow-hidden hover:-translate-y-1 transition-transform duration-200" style="cursor:pointer" onclick="loadTrendingRoutine(${TRENDING_ROUTINES.indexOf(r)})">
+            <div class="p-4 border-b border-white/8">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                    <h4 class="font-display font-bold text-sm">${r.title}</h4>
+                    <span class="text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0" style="background:${r.tagColor}22;color:${r.tagColor};border:1px solid ${r.tagColor}44">${r.tag}</span>
+                </div>
+                <p class="text-gray-400 text-xs leading-relaxed">${r.desc}</p>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-4 text-xs text-gray-500">
+                <span><i class="fa-solid fa-clock mr-1" style="color:#00f3ff"></i>${r.time}</span>
+                <span><i class="fa-solid fa-signal mr-1" style="color:#b026ff"></i>${r.level}</span>
+                <span class="ml-auto font-bold" style="color:${r.tagColor}">Try it →</span>
+            </div>
+        </div>`).join('');
+
+    if (!bgPrograms) return;
+    bgPrograms.innerHTML = BEGINNER_PROGRAMS.map(p => `
+        <div class="glass-card rounded-2xl p-5" style="border:1px solid ${p.color}22">
+            <div class="flex items-center gap-3 mb-3">
+                <span class="text-2xl">${p.emoji}</span>
+                <div>
+                    <h4 class="font-display font-bold text-sm" style="color:${p.color}">${p.title}</h4>
+                    <p class="text-gray-400 text-xs mt-0.5">${p.desc}</p>
+                </div>
+            </div>
+            <div class="space-y-1 mb-3">
+                ${p.days.map(d => `<div class="text-xs text-gray-400 flex items-center gap-2"><span style="color:${p.color}">›</span>${d}</div>`).join('')}
+            </div>
+            <div class="p-3 rounded-lg text-xs" style="background:${p.color}0d;border:1px solid ${p.color}22;color:${p.color}">
+                <i class="fa-solid fa-lightbulb mr-1"></i>${p.tip}
+            </div>
+        </div>`).join('');
+}
+
+function loadTrendingRoutine(idx) {
+    const r = TRENDING_ROUTINES[idx];
+    // Show result section
+    document.getElementById('workoutResult').classList.remove('hidden');
+    document.getElementById('workoutTitle').textContent = r.title;
+    document.getElementById('workoutDurationTag').textContent = r.time;
+    document.getElementById('workoutIntensityTag').textContent = r.level;
+
+    const container = document.getElementById('workoutExercises');
+    container.innerHTML = '';
+    r.exercises.forEach((ex, i) => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-4 p-4 rounded-lg';
+        div.style.background = 'rgba(255,255,255,0.05)';
+        div.innerHTML = `
+            <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0" style="background:rgba(0,243,255,0.2);color:#00f3ff">${i+1}</div>
+            <div class="flex-1">
+                <div class="font-bold text-sm">${ex.n}</div>
+                <div class="text-xs text-gray-400">${ex.sets > 1 ? ex.sets+' sets × ' : ''}${ex.r}</div>
+            </div>`;
+        container.appendChild(div);
+    });
+    document.getElementById('workoutNote').textContent = r.note;
+    document.getElementById('workoutResult').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// Render trending routines when workout section opens
+const _origShowSection = window.showSection;
+// We patch showSection in the existing code block instead
+
 // ── Unread message notification polling ──────────────────
 {% if user.is_authenticated and not user.is_superuser %}
 function pollUnread() {
@@ -1787,6 +2030,9 @@ async function loadFeed() {
         const res = await fetch('/feed/');
         const data = await res.json();
         renderFeed(data.posts);
+        // Start live polling after feed is rendered
+        _lastPollTime = Date.now();
+        startFeedPoller();
     } catch(e) {
         const el = document.getElementById('feedEmpty');
         if (el) el.textContent = 'Could not load feed.';
@@ -1859,6 +2105,7 @@ function buildFeedCard(p) {
             <div class="flex items-center gap-2 flex-shrink-0">
                 ${isAdmin ? `<button onclick="togglePinPost(${p.id}, this)" title="${p.is_pinned ? 'Unpin' : 'Pin post'}" class="text-xs transition-colors p-1.5 rounded-lg hover:bg-white/10" style="color:${p.is_pinned ? '#b026ff' : '#4b5563'}"><i class="fa-solid fa-thumbtack"></i></button>` : ''}
                 ${canDelete ? `<button onclick="deleteFeedPost(${p.id})" class="text-gray-600 hover:text-red-400 text-xs transition-colors p-1.5 rounded-lg hover:bg-white/10" title="Delete post"><i class="fa-solid fa-trash"></i></button>` : ''}
+                ${!canDelete ? `<button onclick="openReportModal(${p.id})" class="text-gray-600 hover:text-yellow-400 text-xs transition-colors p-1.5 rounded-lg hover:bg-white/10" title="Report post"><i class="fa-solid fa-flag"></i></button>` : ''}
             </div>
         </div>
         ${p.caption ? `<p class="text-gray-200 text-sm mb-3 leading-relaxed whitespace-pre-wrap">${escHtml(p.caption)}</p>` : ''}
@@ -1868,7 +2115,7 @@ function buildFeedCard(p) {
                 <i class="fa-${p.liked_by_me ? 'solid' : 'regular'} fa-heart"></i>
                 <span id="like-count-${p.id}">${p.like_count}</span>
             </button>
-            <button onclick="toggleFeedComments(${p.id})" class="flex items-center gap-1.5 text-gray-500 hover:text-white transition-colors">
+            <button onclick="toggleFeedComments(${p.id})" class="comment-toggle-btn flex items-center gap-1.5 text-gray-500 hover:text-white transition-colors">
                 <i class="fa-regular fa-comment"></i>
                 <span id="cmt-count-${p.id}">${p.comment_count}</span>
             </button>
@@ -1949,20 +2196,141 @@ async function submitFeedComment(postId) {
     const input = document.getElementById(`cmt-input-${postId}`);
     const body = input.value.trim();
     if (!body) return;
+
+    // Optimistic: disable input while sending
+    input.disabled = true;
     const res = await fetch('/feed/comment/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
         body: JSON.stringify({ post_id: postId, body })
     });
+    input.disabled = false;
     const data = await res.json();
     if (!data.ok) { showToast(data.error || 'Error', 'error'); return; }
     input.value = '';
     const meId = {{ user.pk }};
-    document.getElementById(`cmt-list-${postId}`).insertAdjacentHTML('beforeend', buildCommentHtml(data.comment, meId));
+
+    // Only inject if the poller hasn't already added it
+    if (!document.getElementById(`cmt-item-${data.comment.id}`)) {
+        document.getElementById(`cmt-list-${postId}`).insertAdjacentHTML('beforeend', buildCommentHtml(data.comment, meId));
+    }
     const cnt = document.getElementById(`cmt-count-${postId}`);
     cnt.textContent = parseInt(cnt.textContent || 0) + 1;
     document.getElementById(`comments-${postId}`).classList.remove('hidden');
+
+    // Advance poller timestamp so we don't re-inject our own comment
+    if (data.comment && data.comment.id) {
+        _lastPollTime = Date.now();
+    }
 }
+
+// ─────────────────────────────────────────────────────────
+// LIVE COMMENT POLLING
+// ─────────────────────────────────────────────────────────
+let _lastPollTime = Date.now();
+let _pollTimer    = null;
+const POLL_INTERVAL = 3000; // ms — poll every 3 seconds
+
+function startFeedPoller() {
+    if (_pollTimer) clearInterval(_pollTimer);
+    _pollTimer = setInterval(pollFeedUpdates, POLL_INTERVAL);
+}
+
+function stopFeedPoller() {
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+async function pollFeedUpdates() {
+    // Only poll when the feed section is visible
+    const feedSection = document.getElementById('section-feed');
+    if (!feedSection || feedSection.classList.contains('hidden')) return;
+
+    try {
+        const res = await fetch(`/feed/poll/?since=${_lastPollTime}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.ok) return;
+
+        const meId = {{ user.pk }};
+
+        // ── Inject new comments ──────────────────────────────
+        data.new_comments.forEach(comment => {
+            // Skip comments already in the DOM
+            if (document.getElementById(`cmt-item-${comment.id}`)) return;
+
+            const list = document.getElementById(`cmt-list-${comment.post_id}`);
+            if (!list) return; // Post card not rendered yet
+
+            // Inject the comment
+            list.insertAdjacentHTML('beforeend', buildCommentHtml(comment, meId));
+
+            // Update comment count badge
+            const cnt = document.getElementById(`cmt-count-${comment.post_id}`);
+            if (cnt) cnt.textContent = parseInt(cnt.textContent || 0) + 1;
+
+            // If comment is NOT mine → show notification dot on comment button
+            if (comment.author_id !== meId) {
+                const commentBtn = document.querySelector(`#feed-card-${comment.post_id} .comment-toggle-btn`);
+                if (commentBtn && !commentBtn.querySelector('.comment-notif-dot')) {
+                    const dot = document.createElement('span');
+                    dot.className = 'comment-notif-dot';
+                    dot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:50%;background:#00f3ff;margin-left:4px;animation:cmtPulse 1.5s ease-in-out infinite';
+                    commentBtn.appendChild(dot);
+                }
+
+                // If the comments section is already open, auto-scroll to new comment
+                const commentsEl = document.getElementById(`comments-${comment.post_id}`);
+                if (commentsEl && !commentsEl.classList.contains('hidden')) {
+                    const newEl = document.getElementById(`cmt-item-${comment.id}`);
+                    if (newEl) {
+                        newEl.style.animation = 'newCommentSlide .4s ease';
+                        newEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+                    }
+                }
+            }
+        });
+
+        // ── Update like + comment counts ─────────────────────
+        data.like_updates.forEach(u => {
+            const likeCnt = document.getElementById(`like-count-${u.post_id}`);
+            const cmtCnt  = document.getElementById(`cmt-count-${u.post_id}`);
+            if (likeCnt) likeCnt.textContent = u.like_count;
+            // comment count already updated above from new_comments, skip to avoid double-count
+        });
+
+        // Advance timestamp
+        if (data.server_time) _lastPollTime = data.server_time;
+
+    } catch(e) {
+        // Silently ignore network errors — will retry next interval
+    }
+}
+
+// Remove notification dot when user opens comments
+const _origToggle = window.toggleFeedComments;
+window.toggleFeedComments = function(postId) {
+    const btn = document.querySelector(`#feed-card-${postId} .comment-toggle-btn`);
+    if (btn) {
+        const dot = btn.querySelector('.comment-notif-dot');
+        if (dot) dot.remove();
+    }
+    if (typeof _origToggle === 'function') _origToggle(postId);
+    else {
+        const el = document.getElementById(`comments-${postId}`);
+        if (el) {
+            el.classList.toggle('hidden');
+            if (!el.classList.contains('hidden')) {
+                const inp = document.getElementById(`cmt-input-${postId}`);
+                if (inp) inp.focus();
+            }
+        }
+    }
+};
+
+// Start/stop poller based on tab visibility
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopFeedPoller(); else startFeedPoller();
+});
 
 async function deleteFeedPost(postId) {
     if (!confirm('Delete this post?')) return;
@@ -2056,5 +2424,45 @@ async function submitSiteReview() {
     }
 }
 </script>
+<!-- ── Report Post Modal ── -->
+<div id="reportPostModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+    <div style="background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02));backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.15);border-radius:1.25rem;padding:2rem;width:100%;max-width:420px;margin:1rem;position:relative">
+        <button onclick="document.getElementById('reportPostModal').style.display='none'"
+            style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.1rem">✕</button>
+        <h2 style="font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:700;margin-bottom:.25rem;color:#fff">
+            <i class="fa-solid fa-flag" style="color:#fbbf24;margin-right:.5rem"></i>REPORT POST
+        </h2>
+        <p style="color:#9ca3af;font-size:.8rem;margin-bottom:1.25rem">Help keep the community safe. Reports are reviewed by admins.</p>
+        <input type="hidden" id="reportPostId">
+        <div style="margin-bottom:1rem">
+            <label style="display:block;font-size:.75rem;color:#9ca3af;margin-bottom:.5rem">Reason *</label>
+            <div style="display:flex;flex-direction:column;gap:.5rem">
+                <label style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:.5rem;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                    <input type="radio" name="reportReason" value="spam" style="accent-color:#fbbf24"> <span style="font-size:.83rem;color:#e5e7eb">Spam or Advertising</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:.5rem;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                    <input type="radio" name="reportReason" value="inappropriate" style="accent-color:#fbbf24"> <span style="font-size:.83rem;color:#e5e7eb">Inappropriate Content</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:.5rem;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                    <input type="radio" name="reportReason" value="harassment" style="accent-color:#fbbf24"> <span style="font-size:.83rem;color:#e5e7eb">Harassment or Bullying</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:.5rem;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                    <input type="radio" name="reportReason" value="misinformation" style="accent-color:#fbbf24"> <span style="font-size:.83rem;color:#e5e7eb">Misinformation</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-radius:.5rem;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+                    <input type="radio" name="reportReason" value="other" style="accent-color:#fbbf24"> <span style="font-size:.83rem;color:#e5e7eb">Other</span>
+                </label>
+            </div>
+        </div>
+        <div style="margin-bottom:1.25rem">
+            <label style="display:block;font-size:.75rem;color:#9ca3af;margin-bottom:.4rem">Additional details (optional)</label>
+            <textarea id="reportDetail" rows="2" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:.5rem;padding:.5rem .75rem;font-size:.83rem;resize:none;box-sizing:border-box" placeholder="Describe the issue…"></textarea>
+        </div>
+        <button onclick="submitReport()" style="width:100%;padding:.8rem;font-weight:700;border-radius:.5rem;border:none;cursor:pointer;background:#fbbf24;color:#000;font-size:.9rem">
+            <i class="fa-solid fa-flag" style="margin-right:.4rem"></i>SUBMIT REPORT
+        </button>
+    </div>
+</div>
+
 </body>
 </html>

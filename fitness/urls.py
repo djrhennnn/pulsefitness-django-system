@@ -45,5 +45,17 @@ urlpatterns = [
     path('feed/delete-post/',      views.feed_delete_post,   name='feed_delete_post'),
     path('feed/pin/',              views.feed_pin_post,      name='feed_pin_post'),
     path('feed/delete-comment/',   views.feed_delete_comment, name='feed_delete_comment'),
+    path('feed/poll/',             views.feed_poll,           name='feed_poll'),
+    path('feed/report/',           views.feed_report_post,    name='feed_report'),
+    path('admin-panel/dismiss-report/', views.admin_dismiss_report, name='admin_dismiss_report'),
     path('site-review/',           views.submit_site_review,  name='submit_site_review'),
+
+    # Analytics
+    path('analytics/',          views.analytics_page,    name='analytics'),
+    path('analytics/client/',  views.client_analytics,  name='client_analytics'),
+    path('analytics/trainer/', views.trainer_analytics, name='trainer_analytics'),
+    path('analytics/admin/',   views.admin_analytics,   name='admin_analytics'),
+    path('analytics/log-weight/',  views.log_weight,    name='log_weight'),
+    path('analytics/save-goal/',   views.save_goal,     name='save_goal'),
+    path('analytics/achieve-goal/', views.achieve_goal, name='achieve_goal'),
 ]

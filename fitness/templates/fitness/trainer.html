@@ -195,7 +195,10 @@
             </button>
         </nav>
 
-        <div class="pt-4 border-t border-white/10">
+        <div class="pt-4 border-t border-white/10 space-y-1">
+            <a href="{% url 'analytics' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-gray-400 transition-colors">
+                <i class="fa-solid fa-chart-line w-4" style="color:#00f3ff"></i>Analytics
+            </a>
             <a href="{% url 'logout' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-500/20 text-sm text-red-400 transition-colors">
                 <i class="fa-solid fa-right-from-bracket w-4"></i>Logout
             </a>
