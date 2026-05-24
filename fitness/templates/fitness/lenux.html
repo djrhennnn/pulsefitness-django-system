@@ -63,11 +63,10 @@
 <style>
 /* Nuclear fallback: force loader gone after 4s even if JS fails */
 @keyframes forceHide {
-    0%,75% { opacity:1; pointer-events:auto; }
-    95%    { opacity:0; pointer-events:none; }
-    100%   { opacity:0; pointer-events:none; display:none; }
+    0%,75% { opacity:1; }
+    100%   { opacity:0; }
 }
-.loader-overlay { animation: forceHide 4s forwards; }
+.loader-overlay { animation: forceHide 4s forwards; pointer-events:none; }
 </style>
 <div id="loader" class="loader-overlay">
     <div class="text-center">
@@ -1206,15 +1205,22 @@
 // ── Loader — only runs on landing page ───────────────────
 // Hard timeout: force loader gone after 3.5s no matter what
 (function() {
+    // Immediately make loader non-interactive so it never blocks clicks
+    document.addEventListener('DOMContentLoaded', () => {
+        const ldr = document.getElementById('loader');
+        if (!ldr) return;
+        ldr.style.pointerEvents = 'none';
+    });
+    // Then fully remove it after animation
     setTimeout(() => {
         const ldr = document.getElementById('loader');
         if (ldr) {
             ldr.style.pointerEvents = 'none';
-            ldr.style.transition = 'opacity 0.5s';
             ldr.style.opacity = '0';
-            setTimeout(() => { ldr.style.display = 'none'; }, 600);
+            ldr.style.visibility = 'hidden';
+            ldr.style.display = 'none';
         }
-    }, 3500);
+    }, 4500);
 })();
 
 window.addEventListener('load', () => {
@@ -1902,7 +1908,7 @@ const BEGINNER_PROGRAMS = [
         title: 'Week 1: Foundation',
         emoji: '🏗️',
         color: '#22c55e',
-        desc: 'Build base fitness and movement patterns. Perfect if you're just starting out.',
+        desc: 'Build base fitness and movement patterns. Perfect if you\'re just starting out.',
         days: ['Monday: Upper Body Basics','Wednesday: Lower Body Basics','Friday: Core & Cardio'],
         tip: 'Focus on form, not weight. Move slowly and breathe through each rep.',
     },
