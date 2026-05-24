@@ -1203,11 +1203,20 @@ window.addEventListener('load', () => {
     let w = 0;
     const iv = setInterval(() => {
         w += Math.random() * 14;
-        if (w >= 100) { w = 100; clearInterval(iv); txt.textContent = 'SYSTEM READY'; }
-        prog.style.width = w + '%';
-        if (w > 40) txt.textContent = 'LOADING ASSETS...';
-        if (w > 75) txt.textContent = 'OPTIMIZING EXPERIENCE...';
-        if (w === 100) setTimeout(() => { ldr.style.opacity = '0'; setTimeout(() => ldr.style.display = 'none', 500); }, 300);
+        if (w >= 100) {
+            w = 100;
+            clearInterval(iv);
+            txt.textContent = 'SYSTEM READY';
+            prog.style.width = '100%';
+            setTimeout(() => {
+                ldr.style.opacity = '0';
+                setTimeout(() => { ldr.style.display = 'none'; }, 500);
+            }, 300);
+        } else {
+            prog.style.width = w + '%';
+            if (w > 40) txt.textContent = 'LOADING ASSETS...';
+            if (w > 75) txt.textContent = 'OPTIMIZING EXPERIENCE...';
+        }
     }, 80);
 });
 
