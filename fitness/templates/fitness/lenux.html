@@ -60,6 +60,11 @@
 
 <!-- Loader — only on landing page, not dashboard -->
 {% if not user.is_authenticated %}
+<style>
+/* Nuclear fallback: force loader gone after 4s even if JS fails */
+@keyframes forceHide { 0%,80%{opacity:1;display:flex} 95%{opacity:0} 100%{opacity:0;display:none} }
+.loader-overlay { animation: forceHide 4s forwards; }
+</style>
 <div id="loader" class="loader-overlay">
     <div class="text-center">
         <h1 class="font-display text-4xl font-bold mb-4 tracking-widest">PULSE<span style="color:#00f3ff">FITNESS</span></h1>
@@ -1195,6 +1200,14 @@
 <!-- ═══════════════════════════ SCRIPTS ════════════════════════════ -->
 <script>
 // ── Loader — only runs on landing page ───────────────────
+// Hard timeout: force loader gone after 3.5s no matter what
+(function() {
+    setTimeout(() => {
+        const ldr = document.getElementById('loader');
+        if (ldr) { ldr.style.transition='opacity 0.5s'; ldr.style.opacity='0'; setTimeout(()=>ldr.style.display='none',500); }
+    }, 3500);
+})();
+
 window.addEventListener('load', () => {
     const ldr  = document.getElementById('loader');
     if (!ldr) return;   // not on dashboard
@@ -1203,20 +1216,11 @@ window.addEventListener('load', () => {
     let w = 0;
     const iv = setInterval(() => {
         w += Math.random() * 14;
-        if (w >= 100) {
-            w = 100;
-            clearInterval(iv);
-            txt.textContent = 'SYSTEM READY';
-            prog.style.width = '100%';
-            setTimeout(() => {
-                ldr.style.opacity = '0';
-                setTimeout(() => { ldr.style.display = 'none'; }, 500);
-            }, 300);
-        } else {
-            prog.style.width = w + '%';
-            if (w > 40) txt.textContent = 'LOADING ASSETS...';
-            if (w > 75) txt.textContent = 'OPTIMIZING EXPERIENCE...';
-        }
+        if (w >= 100) { w = 100; clearInterval(iv); txt.textContent = 'SYSTEM READY'; }
+        prog.style.width = w + '%';
+        if (w > 40) txt.textContent = 'LOADING ASSETS...';
+        if (w > 75) txt.textContent = 'OPTIMIZING EXPERIENCE...';
+        if (w === 100) setTimeout(() => { ldr.style.opacity = '0'; setTimeout(() => ldr.style.display = 'none', 500); }, 300);
     }, 80);
 });
 
