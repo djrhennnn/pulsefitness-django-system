@@ -104,7 +104,6 @@ def register(request):
 
 
 # ── Login / Logout ────────────────────────────────────────
-
 def user_login(request):
     if request.user.is_authenticated:
         return redirect('home')
@@ -122,7 +121,10 @@ def user_login(request):
             'login_error': 'Invalid email or password.',
             'login_email': email,
         }))
-    return redirect('home')
+    # ADD THIS: handle GET — show the home page with login modal open
+    return render(request, 'fitness/lenux.html', _landing_ctx({
+        'open_modal': 'login',
+    }))
 
 def user_logout(request):
     logout(request)

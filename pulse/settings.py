@@ -87,9 +87,14 @@ CSRF_TRUSTED_ORIGINS = [
     "https://pulsefitness.onrender.com",
     "https://*.onrender.com",
 ]
+# After CSRF_TRUSTED_ORIGINS block:
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'Lax'   # ← also add this
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGIN_URL = '/'
+LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
